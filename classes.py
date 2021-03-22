@@ -27,6 +27,8 @@ class Player:
     #when given two cards, choose where to place
     def choose(self,cards,game):
         #TODO add algorithm to choose where to place
+        print(len(cards),type(cards))
+        random.shuffle(cards)
         self.update_will(cards[0])
         game.update_influence(cards[1])
         pass
@@ -34,14 +36,16 @@ class Player:
     #choose two cards to give to the other player
     def ask(self):
         #TODO add algorithm to choose which cards to give
+        random.shuffle(self.hand)
         c0 = self.hand[0] 
         c1 = self.hand[1] 
         del self.hand[0]
         del self.hand[1]
-        return(c0,c1)
+        return([c0,c1])
     
     def replenish(self):
         if len(self.deck) > 0:
+            print(len(self.hand),type(self.hand))
             self.hand = self.hand + self.deck[0:2]
             self.deck = self.deck[2:]
         pass
@@ -54,6 +58,7 @@ class Game:
     def __init__(self):
         self.influence = {"q":0,"w":0,"e":0,"r":0}
         
+        self.turn_number = 0 
         #list of three empty lists
         self.full_deck =  [[] for _ in range(3)] 
 
@@ -74,8 +79,8 @@ class Game:
                 pile_num = i%num_piles
                 piles[pile_num].append(card)
                 #print(card.season,card.power)
-        p1_deck = sum([piles[0:3]],[])
-        p2_deck = sum([piles[4:7]],[])
+        p1_deck = sum(piles[0:3],[])
+        p2_deck = sum(piles[4:7],[])
 
         return(p1_deck,p2_deck)
 
@@ -118,3 +123,4 @@ class Game:
             other_p.choose(p.ask(),self)
             p.replenish()
         self.scoring(players)    
+        self.turn_number += 1 
