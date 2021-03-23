@@ -46,6 +46,7 @@ class Player():
         random.shuffle(self.hand)
         c0 = self.hand[0] 
         c1 = self.hand[1] 
+        print(''.join([self.name ,' ask ', c0.print_card_short() , " ", c1.print_card_short() ]))
         del self.hand[0]
         del self.hand[1]
         return([c0,c1])
@@ -94,6 +95,7 @@ class Game():
         pass
     
     def scoring(self,players):
+        print(self.influence)
         for p in players:
             #calculate socre from scratch
             p.score = 0 
@@ -107,6 +109,7 @@ class Game():
                 elif p.will[s] == max_other :
                     pass
                 else: p.score += p.will[s]
+            print(p.will, p.score)
         
     def winner(self,players):
         for p in players:
@@ -141,4 +144,4 @@ class Game():
     def run_game(self,players):
         while self.turn_number<8:
             self.run_turn(players)
-        print(self.winner(players).name)
+        print("winner "+self.winner(players).name)
