@@ -49,8 +49,8 @@ class Player():
         c0 = self.hand[0] 
         c1 = self.hand[1] 
         log.debug(''.join([self.name ,' ask ', c0.print_card_short() , " ", c1.print_card_short() ]))
-        del self.hand[0]
         del self.hand[1]
+        del self.hand[0]
         return([c0,c1])
     
     def replenish(self):

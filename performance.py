@@ -6,15 +6,17 @@ importlib.reload(classes)
 
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)    
+#logging.basicConfig(level=logging.DEBUG)    
 
 def longterm():
     results = [0,0,0] 
 
-    for i in range(100000):
+    for i in range(10000):
         game = classes.Game()
         players = [classes.Player("P1"),classes.Player("P2")]
         game.start_game(players)
-        result = game.run_game(players)
+        game_result,turn_results = game.run_game(players)
+        result = game_result["winner"]       
         if result != None:
             if   result.name == "P1" : results[0] += 1
             elif result.name == "P2" : results[1] += 1
