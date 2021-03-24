@@ -14,7 +14,7 @@ class Card():
     def print_card(self):
         return("".join(["Season:",self.season," Power: ",str(self.power)]))
     def print_card_short(self):
-        return("".join([self.season,str(self.power)," "]))
+        return("".join([self.season,str(self.power)]))
     
 class Player():
     def __init__(self, name):
@@ -29,8 +29,8 @@ class Player():
         
         self.hand = deck[0:HAND_SIZE]
         self.deck = deck[HAND_SIZE:]
-        log.debug(''.join([self.name ,' hand ']+ ["".join([x.print_card_short() for x in self.hand])]))
-        log.debug(''.join([self.name ,' deck ']+ ["".join([x.print_card_short() for x in self.deck])]))
+        log.debug(''.join([self.name ,' hand ']+ ["".join([x.print_card_short()+" " for x in self.hand])]))
+        log.debug(''.join([self.name ,' deck ']+ ["".join([x.print_card_short()+" " for x in self.deck])]))
 
     #when given two cards, choose where to place
     def choose(self,cards,game):
@@ -95,10 +95,10 @@ class Game():
     def start_game(self,players):
         #print('Starting Game')
         pile_0, pile_1 = self.deal()
-        self.game_stats["p1_deck"] = pile_0
-        self.game_stats["p2_deck"] = pile_1        
-        log.debug(''.join(['Deck 0: ']+ ["".join([x.print_card_short() for x in pile_0])]))
-        log.debug(''.join(['Deck 1: ']+ ["".join([x.print_card_short() for x in pile_1])]))
+        self.game_stats["p1_deck"] = [x.print_card_short() for x in pile_0]
+        self.game_stats["p2_deck"] = [x.print_card_short() for x in pile_1]
+        log.debug(''.join(['Deck 0: ']+ ["".join([x.print_card_short()+" " for x in pile_0])]))
+        log.debug(''.join(['Deck 1: ']+ ["".join([x.print_card_short()+" " for x in pile_1])]))
         players[0].give_deck(pile_0) 
         players[1].give_deck(pile_1) 
                 
@@ -143,12 +143,12 @@ class Game():
         turn_stats["turn"] = self.turn_number
         for i,p in enumerate(players):
         #players[1-i] only works for two players
-            turn_stats["p" + str(i+1) + " hand"] = p.hand
+            turn_stats["p" + str(i+1) + " hand"] = [x.print_card_short() for x in p.hand]
             other_p = players[1-i]
             ask = p.ask()
-            turn_stats["p" + str(i+1) + " ask"] = ask
+            turn_stats["p" + str(i+1) + " ask"] = [x.print_card_short() for x in ask]
             choose = other_p.choose(ask, self)
-            turn_stats["p" + str(2-i) + " choose"] = choose
+            turn_stats["p" + str(2-i) + " choose"] = [x.print_card_short() for x in choose]
         #at the end of the turn figure out the scores, not necessary but probably useful for learning    
         self.scoring(players)    
         turn_stats['influence'] = self.influence
