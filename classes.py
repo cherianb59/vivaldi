@@ -7,15 +7,18 @@ log = logging.getLogger(__name__)
 
 import random 
 
-class Card():
-    def __init__(self, season, power):
-        self.season = season
-        self.power = power  
-    def print_card(self):
-        return("".join(["Season:",self.season," Power: ",str(self.power)]))
-    def print_card_short(self):
-        return("".join([self.season,str(self.power)," "]))
+def card(season, power):
+    card={}
+    card["season"] = season
+    card["power"] = power  
+    return(card)    
     
+def print_card(card):
+    return("".join(["Season:",card["season"]," Power: ",str(card["power"])]))
+    
+def print_card_short(card):
+    return("".join([card["season"],str(card["power"])]))
+        
 class Player():
     def __init__(self, name):
         self.name = name
@@ -29,14 +32,14 @@ class Player():
         
         self.hand = deck[0:HAND_SIZE]
         self.deck = deck[HAND_SIZE:]
-        log.debug(''.join([self.name ,' hand ']+ ["".join([x.print_card_short() for x in self.hand])]))
-        log.debug(''.join([self.name ,' deck ']+ ["".join([x.print_card_short() for x in self.deck])]))
+        log.debug(''.join([self.name ,' hand ']+ ["".join([print_card_short(c) for c in self.hand])]))
+        log.debug(''.join([self.name ,' deck ']+ ["".join([print_card_short(c) for c in self.deck])]))
 
     #when given two cards, choose where to place
     def choose(self,cards,game):
         #TODO add algorithm to choose where to place
         random.shuffle(cards)
-        log.debug(''.join([self.name ,' choice ', "Will:",cards[0].print_card_short() , " influence:", cards[1].print_card_short() ]))
+        log.debug(''.join([self.name ,' choice ', "Will:",print_card_short(cards[0]) , " influence:", print_card_short(cards[1]) ]))
         self.update_will(cards[0])
         game.update_influence(cards[1])
         
@@ -47,7 +50,7 @@ class Player():
         random.shuffle(self.hand)
         c0 = self.hand[0] 
         c1 = self.hand[1] 
-        log.debug(''.join([self.name ,' ask ', c0.print_card_short() , " ", c1.print_card_short() ]))
+        log.debug(''.join([self.name ,' ask ', print_card_short(c0) , " ", print_card_short(c1) ]))
         del self.hand[0]
         del self.hand[1]
         return([c0,c1])
@@ -59,7 +62,7 @@ class Player():
         pass
 
     def update_will(self,card):
-        self.will[card.season] += card.power
+        self.will[card["season"]] += card["power"]
         pass
     
 class Game():
@@ -75,7 +78,7 @@ class Game():
         for j in rank_quantity:
             for c in season_short: 
                 for i in range(rank_quantity[j]):
-                    self.full_deck[j-1].append(Card(c,j))
+                    self.full_deck[j-1].append(card(c,j))
         
     #deal teh cards
     def deal(self):
@@ -92,7 +95,7 @@ class Game():
         return(p1_deck,p2_deck)
 
     def update_influence(self,card):
-        self.influence[card.season] += card.power
+        self.influence[card["season"]] += card["power"]
         pass
     
     def scoring(self,players):
@@ -129,8 +132,8 @@ class Game():
     def start_game(self,players):
         #print('Starting Game')
         pile_0, pile_1 = self.deal() 
-        log.debug(''.join(['Deck 0: ']+ ["".join([x.print_card_short() for x in pile_0])]))
-        log.debug(''.join(['Deck 1: ']+ ["".join([x.print_card_short() for x in pile_1])]))
+        log.debug(''.join(['Deck 0: ']+ ["".join([print_card_short(c) for c in pile_0])]))
+        log.debug(''.join(['Deck 1: ']+ ["".join([print_card_short(c) for c in pile_1])]))
         players[0].give_deck(pile_0) 
         players[1].give_deck(pile_1) 
         
