@@ -2,9 +2,10 @@
 season_names = {"q":"Summer","w":"Autumn","e":"Winter","r":"Spring"} 
 season_short = ["q","w","e","r"]
 rank_quantity = {1:4, 2:6, 3:2}
+import logging
+log = logging.getLogger(__name__)
 
 import random 
-logging.basicConfig(filename='example.log', filemode='w', encoding='utf-8', level=logging.DEBUG) 
 
 class Card():
     def __init__(self, season, power):
@@ -28,14 +29,14 @@ class Player():
         
         self.hand = deck[0:HAND_SIZE]
         self.deck = deck[HAND_SIZE:]
-        print(''.join([self.name ,' hand ']+ ["".join([x.print_card_short() for x in self.hand])]))
-        print(''.join([self.name ,' deck ']+ ["".join([x.print_card_short() for x in self.deck])]))
+        log.debug(''.join([self.name ,' hand ']+ ["".join([x.print_card_short() for x in self.hand])]))
+        log.debug(''.join([self.name ,' deck ']+ ["".join([x.print_card_short() for x in self.deck])]))
 
     #when given two cards, choose where to place
     def choose(self,cards,game):
         #TODO add algorithm to choose where to place
         random.shuffle(cards)
-        print(''.join([self.name ,' choice ', "Will:",cards[0].print_card_short() , " influence:", cards[1].print_card_short() ]))
+        log.debug(''.join([self.name ,' choice ', "Will:",cards[0].print_card_short() , " influence:", cards[1].print_card_short() ]))
         self.update_will(cards[0])
         game.update_influence(cards[1])
         
@@ -46,7 +47,7 @@ class Player():
         random.shuffle(self.hand)
         c0 = self.hand[0] 
         c1 = self.hand[1] 
-        print(''.join([self.name ,' ask ', c0.print_card_short() , " ", c1.print_card_short() ]))
+        log.debug(''.join([self.name ,' ask ', c0.print_card_short() , " ", c1.print_card_short() ]))
         del self.hand[0]
         del self.hand[1]
         return([c0,c1])
@@ -95,7 +96,7 @@ class Game():
         pass
     
     def scoring(self,players):
-        print(self.influence)
+        log.debug(self.influence)
         for p in players:
             #calculate socre from scratch
             p.score = 0 
@@ -109,7 +110,8 @@ class Game():
                 elif p.will[s] == max_other :
                     pass
                 else: p.score += p.will[s]
-            print(p.will, p.score)
+            log.debug(p.will)
+            log.debug(p.score)
         
     def winner(self,players):
         for p in players:
@@ -125,10 +127,10 @@ class Game():
         return(None)
     
     def start_game(self,players):
-        print('Starting Game')
+        #print('Starting Game')
         pile_0, pile_1 = self.deal() 
-        print(''.join(['Deck 1: ']+ ["".join([x.print_card_short() for x in pile_0])]))
-        print(''.join(['Deck 0: ']+ ["".join([x.print_card_short() for x in pile_1])]))
+        log.debug(''.join(['Deck 0: ']+ ["".join([x.print_card_short() for x in pile_0])]))
+        log.debug(''.join(['Deck 1: ']+ ["".join([x.print_card_short() for x in pile_1])]))
         players[0].give_deck(pile_0) 
         players[1].give_deck(pile_1) 
         
@@ -144,4 +146,4 @@ class Game():
     def run_game(self,players):
         while self.turn_number<8:
             self.run_turn(players)
-        print("winner "+self.winner(players).name)
+        return(self.winner(players))
