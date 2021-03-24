@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 def longterm():
     results = [0,0,0] 
 
-    for i in range(10000):
+    for i in range(100000):
         game = classes.Game()
         players = [classes.Player("P1"),classes.Player("P2")]
         game.start_game(players)
