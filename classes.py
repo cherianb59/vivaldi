@@ -29,8 +29,8 @@ class Player():
         
         self.hand = deck[0:HAND_SIZE]
         self.deck = deck[HAND_SIZE:]
-        log.debug(''.join([self.name ,' hand ']+ ["".join([x.print_card_short()+" " for x in self.hand])]))
-        log.debug(''.join([self.name ,' deck ']+ ["".join([x.print_card_short()+" " for x in self.deck])]))
+        log.debug(''.join([self.name ,' hand '] + ["".join([x.print_card_short()+" " for x in self.hand])]))
+        log.debug(''.join([self.name ,' deck '] + ["".join([x.print_card_short()+" " for x in self.deck])]))
 
     #when given two cards, choose where to place
     def choose(self,cards,game):
@@ -168,5 +168,7 @@ class Game():
             p.replenish()
             self.game_stats["p" + str(i+1) + " score"] = p.score
             self.game_stats["p" + str(i+1) + " will"] = p.will
-        self.game_stats['winner'] = winner
+        self.game_stats['draw'] = (winner == None)
+        if self.game_stats['draw'] == False: self.game_stats['winner'] = winner.name  
+        else: self.game_stats['winner']=""
         return(self.game_stats,self.turn_stats)
