@@ -11,17 +11,15 @@ logging.basicConfig(level=logging.INFO)
 def longterm():
     results = [0,0,0] 
 
-    for i in range(10000):
-        game = classes.Game()
-        players = [classes.Player("P1"),classes.Player("P2")]
-        game.start_game(players)
-        game_result,turn_results = game.run_game(players)
+    for i in range(100000):
+        game = classes.Game(id = i, seed= i )
+        game.start_game()
+        game_result,turn_results = game.run_game()
         result = game_result["winner"]       
-        if result != None:
-            if   result.name == "P1" : results[0] += 1
-            elif result.name == "P2" : results[1] += 1
+        if result != "":
+            if   result == "P0" : results[0] += 1
+            elif result == "P1" : results[1] += 1
         else: results[2] += 1
         del game
-        del players   
     print(results)
 cProfile.run('longterm()')
