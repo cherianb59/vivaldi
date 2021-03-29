@@ -5,6 +5,9 @@ rank_quantity = {1:4, 2:6, 3:2}
 import logging
 log = logging.getLogger(__name__)
 
+import importlib
+import ai
+importlib.reload(ai)
 import random 
 
 class Card():
@@ -17,13 +20,14 @@ class Card():
         return("".join([self.season,str(self.power)]))
     
 class Player():
-    def __init__(self, id):
+    def __init__(self, game, id, AI_type):
         self.id = id
         self.name = "P"+str(id)
         self.will = {"q":0,"w":0,"e":0,"r":0}
         self.score = 0 
         self.seasons_won = 0 
-        #self.AI = PlayerAI(AI_type)
+        self.game = game
+        self.ai = ai.PlayerAI(self,self.game,AI_type)
         
     def give_deck(self,deck):
         HAND_SIZE = 8
@@ -31,17 +35,18 @@ class Player():
         
         self.hand = deck[0:HAND_SIZE]
         self.deck = deck[HAND_SIZE:]
-        log.debug(''.join([self.name ,' hand '] + ["".join([x.print_card_short()+" " for x in self.hand])]))
-        log.debug(''.join([self.name ,' deck '] + ["".join([x.print_card_short()+" " for x in self.deck])]))
+        log.debug(''.join([self.name ,' hand '] + [x.print_card_short()+" " for x in self.hand]))
+        log.debug(''.join([self.name ,' deck '] + [x.print_card_short()+" " for x in self.deck]))
 
     #when given two cards, choose where to place
-    def choose(self,cards,game):
-        #TODO add algorithm to choose where to place
-        self
-        log.debug(''.join([self.name ,' choice ', "Will:",cards[0].print_card_short() , " influence:", cards[1].print_card_short() ]))
-        self.update_will(cards[0])
-        game.update_influence(cards[1])
-        return(cards[0],cards[1] )
+    def choose(self,cards):
+        #Make the ai choose the cards
+        chosen_cards = self.ai.choose(cards)
+        #print(chosen_cards)
+        log.debug(''.join([self.name ,' choice ', "Will:",chosen_cards[0].print_card_short() , " influence:", chosen_cards[1].print_card_short() ]))
+        self.update_will(chosen_cards[0])
+        self.game.update_influence(chosen_cards[1])
+        return(chosen_cards)
         
     
     #choose two cards to give to the other player
@@ -69,17 +74,17 @@ class Game():
     def __init__(self, id, seed  = None):
         self.influence = {"q":0,"w":0,"e":0,"r":0}
         self.id = id
-        self.players =  [Player(i) for i in range(2)] 
+        self.players =  [Player(self, 0, "random") , Player(self, 1, "minimax")] 
         if seed != None:
             random.seed(seed)
         self.game_stats = {}
         self.turn_stats = []
         self.turn_number = 0 
-        #list of three empty lists
+        #list of three empty lists, one for each power of card
         self.full_deck =  [[] for _ in range(3)] 
 
         #create a full deck of cards
-        #iterate through powers
+        #iterate through powers then seasons
         for j in rank_quantity:
             for c in season_short: 
                 for i in range(rank_quantity[j]):
@@ -145,22 +150,25 @@ class Game():
     def run_turn(self):
         turn_stats={}
         self.turn_number += 1 
-        turn_stats["turn"] = self.turn_number
+        
         for i,p in enumerate(self.players):
         #players[1-i] only works for two players
             turn_stats["p" + str(i) + " hand"] = [x.print_card_short() for x in p.hand]
             other_p = self.players[1-i]
             ask = p.ask()
             turn_stats["p" + str(i) + " ask"] = [x.print_card_short() for x in ask]
-            choose = other_p.choose(ask, self)
+            choose = other_p.choose(ask)
+            print(other_p.name + " will after choice: ", other_p.will)
             turn_stats["p" + str(1-i) + " choose"] = [x.print_card_short() for x in choose]
         #at the end of the turn figure out the scores, not necessary but probably useful for learning    
         self.scoring()    
         turn_stats['influence'] = self.influence
+        #player stats
         for i,p in enumerate(self.players):
             p.replenish()
             turn_stats["p" + str(i) + " score"] = p.score
             turn_stats["p" + str(i) + " will"] = p.will
+        turn_stats["turn"] = self.turn_number
         self.turn_stats.append(turn_stats)
     
     def run_game(self):

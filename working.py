@@ -5,8 +5,8 @@ import classes #import the module here, so that it can be reloaded.
 importlib.reload(classes)
 
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)    
-#logging.basicConfig(level=logging.DEBUG)    
+#logging.basicConfig(level=logging.INFO)    
+logging.basicConfig(level=logging.DEBUG)    
 
 def longterm():
     results = [0,0,0] 
@@ -22,4 +22,4 @@ def longterm():
         else: results[2] += 1
         del game
     print(results)
-cProfile.run('longterm()')
+longterm()
