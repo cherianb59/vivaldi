@@ -42,7 +42,6 @@ class Player():
     def choose(self,cards):
         #Make the ai choose the cards
         chosen_cards = self.ai.choose(cards)
-        #print(chosen_cards)
         log.debug(''.join([self.name ,' choice ', "Will:",chosen_cards[0].print_card_short() , " influence:", chosen_cards[1].print_card_short() ]))
         self.update_will(chosen_cards[0])
         self.game.update_influence(chosen_cards[1])
@@ -74,7 +73,7 @@ class Game():
     def __init__(self, id, seed  = None):
         self.influence = {"q":0,"w":0,"e":0,"r":0}
         self.id = id
-        self.players =  [Player(self, 0, "random") , Player(self, 1, "minimax")] 
+        self.players =  [Player(self, 0, "minimax") , Player(self, 1, "random")] 
         if seed != None:
             random.seed(seed)
         self.game_stats = {}
@@ -158,7 +157,6 @@ class Game():
             ask = p.ask()
             turn_stats["p" + str(i) + " ask"] = [x.print_card_short() for x in ask]
             choose = other_p.choose(ask)
-            print(other_p.name + " will after choice: ", other_p.will)
             turn_stats["p" + str(1-i) + " choose"] = [x.print_card_short() for x in choose]
         #at the end of the turn figure out the scores, not necessary but probably useful for learning    
         self.scoring()    
