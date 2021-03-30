@@ -21,9 +21,12 @@ class Card():
     def print_card_short(self):
         return("".join([self.season,str(self.power)]))
 		
+	
     def __repr__(self):
+	#what python prints	if print(Class) is called
         return(print_card_short(self))
 		
+	#comparison functions
 	def __le__(self, other): 
 	    return(self.season == other.season and self.power <= other.power )
 		
@@ -51,6 +54,21 @@ class Player():
         self.seasons_won = 0 
         self.game = game
         self.ai = ai.PlayerAI(self,self.game,AI_type)
+		
+	def __lt__(self, other): 
+	    return(self.score < other.score or  (self.score == other.score and self.seasons_won < other.seasons_won )  )
+
+	def __le__(self, other): 
+	    return(self < other or self==other )
+
+	def __gt__(self, other): 
+	    return(self.score > other.score or  (self.score == other.score and self.seasons_won > other.seasons_won )  )
+
+	def __ge__(self, other): 
+	    return(self > other or self==other )
+		
+	def __eq__(self, other): 
+	    return(self.score == other.score and self.seasons_won == other.seasons_won )
         
     def give_deck(self,deck):
         HAND_SIZE = 8
