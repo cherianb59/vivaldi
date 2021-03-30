@@ -131,6 +131,7 @@ class Game():
     #deal teh cards
     def deal(self):
         num_piles = 8
+		#shuffle the three decks, place into 8 piles, igve the first three to first player next three to seond player, last two arent used
         piles = [[] for _ in range(num_piles)]
         for j in rank_quantity:
             random.shuffle(self.full_deck[j-1])
@@ -192,15 +193,15 @@ class Game():
         for i,p in enumerate(self.players):
         #players[1-i] only works for two players
             turn_stats["p" + str(i) + " hand"] = [x.print_card_short() for x in p.hand]
-            other_p = self.players[1-i]
+            opposition  = self.players[1-i]
             ask = p.ask()
             turn_stats["p" + str(i) + " ask"] = [x.print_card_short() for x in ask]
-            choose = other_p.choose(ask)
+            choose = opposition.choose(ask)
             turn_stats["p" + str(1-i) + " choose"] = [x.print_card_short() for x in choose]
-        #at the end of the turn figure out the scores, not necessary but probably useful for learning    
+        #at the end of the turn figure out the scores, not necessary but probably useful for ML
         self.scoring()    
         turn_stats['influence'] = self.influence
-        #player stats
+        #add cards to the hand record player stats
         for i,p in enumerate(self.players):
             p.replenish()
             turn_stats["p" + str(i) + " score"] = p.score

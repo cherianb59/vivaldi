@@ -20,7 +20,7 @@ class PlayerAI():
             ask_max_points_difference = -999
             ask_option = None
             
-             opposition = self.game.players[1 - self.player.id]
+            opposition = self.game.players[1 - self.player.id]
             
             #store things that are going to change and need to be reverted
             opposition_ai = opposition.ai_type
@@ -29,14 +29,19 @@ class PlayerAI():
             
             for ask_candidate in hand : 
                 opposition.ai_type = "minimax"
+				log.debug(''.join([self.player.name,' ask candidate'] + [ str(c) for c in ask_candidate] ))
                 #give the opposition the candidate cards, they will choose which card gets played where
                 ask_chosen = opposition.choose(ask_candidate)
+				log.debug(''.join([opposition.name,' ask chosen'] + [ str(c) for c in ask_chosen] ))
                 #score this choice                
                 #TODO choose already find the best scoring, dont need to recalculate
-                opposition.update_will(ask_chosen[0])
+                log.debug(''.join([opposition.name,' add to will ',str(ask_chosen[0]), " add to influence ", str(ask_chosen[1])] ))
+				opposition.update_will(ask_chosen[0])
                 self.game.update_influence(ask_chosen[1])
+				log.debug(''.join([opposition.name,' will: ',opposition.will, " influence: ", self.game.influence] ))
                 self.game.scoring()
                 points_difference = self.player.score - opposition.score
+				log.debug(''.join(["player score:", self.player.score ,"opposition score:",  opposition.score, " points diff: ",points_difference] ))
                 #revert changes
                 opposition.ai_type = opposition_ai 
                 opposition.will = old_will
@@ -64,16 +69,19 @@ class PlayerAI():
                 old_will = self.player.will
                 old_influence = self.game.influence               
                 #put one card in the influence the other card in the will 
+				log.debug(''.join([self.player.name,' add to will ',str(cards[i]), " add to influence ", str(cards[1-i])] ))
                 self.player.update_will(cards[i])
                 self.game.update_influence(cards[1-i])
-                #score this choice
+				log.debug(''.join([self.player.name,' will: ',self.player.will, " influence: ", self.game.influence] ))                #score this choice
                 self.game.scoring()
                 #the relative score is important not the absolute score
                 points_difference[i] = self.player.score - opposition.score
+				log.debug(''.join(["player score:", self.player.score ,"opposition score:",  opposition.score, " points diff: ",str(points_difference[i]) ] ))
+				
                 #undo changes
                 self.game.players[self.player.id].will = old_will
                 self.game.influence = old_influence
                 self.game.scoring()
-        
+				
             if points_difference[0] > points_difference[1] :return(cards)
             else: return(cards[::-1])
