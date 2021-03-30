@@ -14,11 +14,34 @@ class Card():
     def __init__(self, season, power):
         self.season = season
         self.power = power  
+		
     def print_card(self):
         return("".join(["Season:",self.season," Power: ",str(self.power)]))
+		
     def print_card_short(self):
         return("".join([self.season,str(self.power)]))
-    
+		
+    def __repr__(self):
+        return(print_card_short(self))
+		
+	def __le__(self, other): 
+	    return(self.season == other.season and self.power <= other.power )
+		
+	def __lt__(self, other): 
+	    return(self.season == other.season and self.power < other.power )
+		
+	def __ge__(self, other): 
+	    return(self.season == other.season and self.power >= other.power )
+		
+	def __gt__(self, other): 
+	    return(self.season == other.season and self.power > other.power )
+		
+	def __eq__(self, other): 
+	    return(self.power == other.power and self.season == other.season)
+		
+	def __ne__(self, other): 
+	    return(self.power != other.power or self.season != other.season)
+		
 class Player():
     def __init__(self, game, id, AI_type):
         self.id = id
@@ -50,24 +73,22 @@ class Player():
     
     #choose two cards to give to the other player
     def ask(self):
-        #TODO add algorithm to choose which cards to give
-        random.shuffle(self.hand)
-        c0 = self.hand[0] 
-        c1 = self.hand[1] 
+        #move the asked cards to the first two positions of the hand
+        self.hand = self.ai.choose(self.hand)
         log.debug(''.join([self.name ,' ask ', c0.print_card_short() , " ", c1.print_card_short() ]))
+		#remove cards from hand
         del self.hand[1]
         del self.hand[0]
-        return([c0,c1])
+        return(self.hand[0:2])
     
     def replenish(self):
+	#move cards from deck to hand
         if len(self.deck) > 0:
             self.hand = self.hand + self.deck[0:2]
             self.deck = self.deck[2:]
-        pass
 
     def update_will(self,card):
         self.will[card.season] += card.power
-        pass
     
 class Game():
     def __init__(self, id, seed  = None):
