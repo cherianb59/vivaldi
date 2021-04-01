@@ -1,4 +1,4 @@
-#CONSTANTS
+    #CONSTANTS
 season_names = {"q":"Summer","w":"Autumn","e":"Winter","r":"Spring"} 
 season_short = ["q","w","e","r"]
 rank_quantity = {1:4, 2:6, 3:2}
@@ -9,42 +9,42 @@ import importlib
 import ai
 importlib.reload(ai)
 import random 
+from copy import copy 
 
 class Card():
     def __init__(self, season, power):
         self.season = season
         self.power = power  
-		
+        
     def print_card(self):
         return("".join(["Season:",self.season," Power: ",str(self.power)]))
-		
+        
     def print_card_short(self):
         return("".join([self.season,str(self.power)]))
-		
-	
+        
     def __repr__(self):
-	#what python prints	if print(Class) is called
-        return(print_card_short(self))
-		
-	#comparison functions
-	def __le__(self, other): 
-	    return(self.season == other.season and self.power <= other.power )
-		
-	def __lt__(self, other): 
-	    return(self.season == other.season and self.power < other.power )
-		
-	def __ge__(self, other): 
-	    return(self.season == other.season and self.power >= other.power )
-		
-	def __gt__(self, other): 
-	    return(self.season == other.season and self.power > other.power )
-		
-	def __eq__(self, other): 
-	    return(self.power == other.power and self.season == other.season)
-		
-	def __ne__(self, other): 
-	    return(self.power != other.power or self.season != other.season)
-		
+    #what python prints    if print(Class) is called
+        return(self.print_card_short())
+        
+    #comparison functions
+    def __le__(self, other):
+        return(self.season == other.season and self.power <= other.power )
+        
+    def __lt__(self, other):
+        return(self.season == other.season and self.power < other.power )
+        
+    def __ge__(self, other):
+        return(self.season == other.season and self.power >= other.power )
+        
+    def __gt__(self, other): 
+        return(self.season == other.season and self.power > other.power )
+        
+    def __eq__(self, other): 
+        return(self.power == other.power and self.season == other.season)
+        
+    def __ne__(self, other): 
+        return(self.power != other.power or self.season != other.season)
+        
 class Player():
     def __init__(self, game, id, AI_type):
         self.id = id
@@ -54,21 +54,24 @@ class Player():
         self.seasons_won = 0 
         self.game = game
         self.ai = ai.PlayerAI(self,self.game,AI_type)
-		
-	def __lt__(self, other): 
-	    return(self.score < other.score or  (self.score == other.score and self.seasons_won < other.seasons_won )  )
+        
+    def __lt__(self, other): 
+        return(self.score < other.score or  (self.score == other.score and self.seasons_won < other.seasons_won )  )
 
-	def __le__(self, other): 
-	    return(self < other or self==other )
+    def __le__(self, other): 
+        return(self < other or self==other )
 
-	def __gt__(self, other): 
-	    return(self.score > other.score or  (self.score == other.score and self.seasons_won > other.seasons_won )  )
+    def __gt__(self, other): 
+        return(self.score > other.score or  (self.score == other.score and self.seasons_won > other.seasons_won )  )
 
-	def __ge__(self, other): 
-	    return(self > other or self==other )
-		
-	def __eq__(self, other): 
-	    return(self.score == other.score and self.seasons_won == other.seasons_won )
+    def __ge__(self, other): 
+        return(self > other or self==other )
+        
+    def __eq__(self, other): 
+        if self is None and other is None: return(True)
+        elif self.score == other.score and self.seasons_won == other.seasons_won :return(True)
+        else: return(False)
+        
         
     def give_deck(self,deck):
         HAND_SIZE = 8
@@ -76,14 +79,14 @@ class Player():
         
         self.hand = deck[0:HAND_SIZE]
         self.deck = deck[HAND_SIZE:]
-        log.debug(''.join([self.name ,' hand '] + [x.print_card_short()+" " for x in self.hand]))
-        log.debug(''.join([self.name ,' deck '] + [x.print_card_short()+" " for x in self.deck]))
+        log.debug(''.join([self.name ,' hand '] + [str(x)+" " for x in self.hand]))
+        log.debug(''.join([self.name ,' deck '] + [str(x)+" " for x in self.deck]))
 
     #when given two cards, choose where to place
     def choose(self,cards):
         #Make the ai choose the cards
         chosen_cards = self.ai.choose(cards)
-        log.debug(''.join([self.name ,' choice ', "Will:",chosen_cards[0].print_card_short() , " influence:", chosen_cards[1].print_card_short() ]))
+        log.debug(''.join([self.name ,' choice ', "Will:",str(chosen_cards[0]) , " influence:", str(chosen_cards[1]) ]))
         self.update_will(chosen_cards[0])
         self.game.update_influence(chosen_cards[1])
         return(chosen_cards)
@@ -92,15 +95,15 @@ class Player():
     #choose two cards to give to the other player
     def ask(self):
         #move the asked cards to the first two positions of the hand
-        self.hand = self.ai.choose(self.hand)
-        log.debug(''.join([self.name ,' ask ', c0.print_card_short() , " ", c1.print_card_short() ]))
-		#remove cards from hand
-        del self.hand[1]
-        del self.hand[0]
-        return(self.hand[0:2])
+        ask_cards = list(self.ai.ask(self.hand))
+        log.debug(''.join([self.name ,' ask ', str(self.hand[0]) , " ", str(self.hand[1]) ]))
+        #remove cards from hand
+        self.hand.remove(ask_cards[0])
+        self.hand.remove(ask_cards[1])
+        return(ask_cards)
     
     def replenish(self):
-	#move cards from deck to hand
+    #move cards from deck to hand
         if len(self.deck) > 0:
             self.hand = self.hand + self.deck[0:2]
             self.deck = self.deck[2:]
@@ -112,7 +115,7 @@ class Game():
     def __init__(self, id, seed  = None):
         self.influence = {"q":0,"w":0,"e":0,"r":0}
         self.id = id
-        self.players =  [Player(self, 0, "minimax") , Player(self, 1, "random")] 
+        self.players =  [Player(self, 0, "minimax") , Player(self, 1, "minimax")] 
         if seed != None:
             random.seed(seed)
         self.game_stats = {}
@@ -131,7 +134,7 @@ class Game():
     #deal teh cards
     def deal(self):
         num_piles = 8
-		#shuffle the three decks, place into 8 piles, igve the first three to first player next three to seond player, last two arent used
+        #shuffle the three decks, place into 8 piles, igve the first three to first player next three to seond player, last two arent used
         piles = [[] for _ in range(num_piles)]
         for j in rank_quantity:
             random.shuffle(self.full_deck[j-1])
@@ -147,8 +150,8 @@ class Game():
         piles = self.deal()
         #create piles, then for each player give them a pile
         for i in range(2):
-            self.game_stats[str(self.players[i].name) + "_deck"] = [x.print_card_short() for x in piles[i]]
-            log.debug(''.join(['Deck ' + self.players[i].name + ': ']+ ["".join([x.print_card_short()+" " for x in piles[i]])]))
+            self.game_stats[str(self.players[i].name) + "_deck"] = [str(x) for x in piles[i]]
+            log.debug(''.join(['Deck ' + self.players[i].name + ': ']+ ["".join([str(x) + " " for x in piles[i]])]))
             self.players[i].give_deck(piles[i]) 
                 
     def update_influence(self,card):
@@ -159,15 +162,14 @@ class Game():
         log.debug(self.influence)
         for p in self.players:
             #calculate socre from scratch
+            opposition = p.game.players[1 - p.id]
             p.score = 0 
             p.seasons_won = 0 
             for s in season_short:
-                max_other = max(x.will[s] for x in self.players if x.name != p.name )
-                #check that this player has maximum will
-                if p.will[s] > max_other :
+                if p.will[s] > opposition.will[s] :
                     p.score += self.influence[s] + p.will[s]
                     p.seasons_won += 1 
-                elif p.will[s] == max_other :
+                elif p.will[s] == opposition.will[s] :
                     pass
                 else: p.score += p.will[s]
             log.debug(p.will)
@@ -189,15 +191,14 @@ class Game():
     def run_turn(self):
         turn_stats={}
         self.turn_number += 1 
-        
         for i,p in enumerate(self.players):
         #players[1-i] only works for two players
-            turn_stats["p" + str(i) + " hand"] = [x.print_card_short() for x in p.hand]
+            turn_stats["p" + str(i) + " hand"] = [str(x) for x in p.hand]
             opposition  = self.players[1-i]
             ask = p.ask()
-            turn_stats["p" + str(i) + " ask"] = [x.print_card_short() for x in ask]
+            turn_stats["p" + str(i) + " ask"] = [str(x) for x in ask]
             choose = opposition.choose(ask)
-            turn_stats["p" + str(1-i) + " choose"] = [x.print_card_short() for x in choose]
+            turn_stats["p" + str(1-i) + " choose"] = [str(x) for x in choose]
         #at the end of the turn figure out the scores, not necessary but probably useful for ML
         self.scoring()    
         turn_stats['influence'] = self.influence
@@ -210,7 +211,7 @@ class Game():
         self.turn_stats.append(turn_stats)
     
     def run_game(self):
-        while self.turn_number <= 8:
+        while self.turn_number < 8:
             self.run_turn()
         #find the winner store the stats
         winner = self.winner()
@@ -219,7 +220,8 @@ class Game():
             p.replenish()
             self.game_stats["p" + str(i) + " score"] = p.score
             self.game_stats["p" + str(i) + " will"] = p.will
-        self.game_stats['draw'] = (winner == None)
+        self.game_stats['draw'] = (winner is None)
         if self.game_stats['draw'] == False: self.game_stats['winner'] = winner.name  
         else: self.game_stats['winner']=""
         return(self.game_stats,self.turn_stats)
+
