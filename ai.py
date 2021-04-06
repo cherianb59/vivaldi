@@ -2,7 +2,7 @@ import logging
 log = logging.getLogger(__name__)
 import random 
 from itertools import combinations
-from copy import copy
+import copy
 
 class PlayerAI():
     def __init__(self, player, game, ai_type= "random"):
@@ -25,9 +25,9 @@ class PlayerAI():
             opposition = self.game.players[1 - self.player.id]
             
             #store things that are going to change and need to be reverted
-            opposition_ai = copy(opposition.ai.ai_type)
-            old_will = copy(opposition.will)
-            old_influence = copy(self.game.influence)
+            opposition_ai = copy.deepcopy(opposition.ai.ai_type)
+            old_will = copy.deepcopy(opposition.will)
+            old_influence = copy.deepcopy(self.game.influence)
             
             opposition.ai_type = "minimax"
             
@@ -45,16 +45,18 @@ class PlayerAI():
                 log.debug(''.join([opposition.name,' will: ', str(opposition.will), " influence: ", str(self.game.influence)] ))
                 self.game.scoring()
                 points_difference = self.player.score - opposition.score
+                
                 #print(ask_candidate, points_difference, opposition.will, self.game.influence)
                 log.debug(''.join(["player score:", str(self.player.score) ,"opposition score:",  str(opposition.score), " points diff: ",str(points_difference)] ))
                 #revert changes
-                opposition.will = old_will
-                self.game.influence = old_influence
+                opposition.will = copy.deepcopy(old_will)
+                self.game.influence = copy.deepcopy(old_influence)
                 #compare to best choice
                 if points_difference >= ask_max_points_difference:
                     ask_max_points_difference = points_difference
                     ask_option = ask_candidate
             opposition.ai_type = opposition_ai 
+            
             return(ask_option)
         
     def choose(self, cards):
@@ -71,8 +73,8 @@ class PlayerAI():
             for i in range(2):
                 #copy the attributes that will change
                 #TODO Check old_will, old_influcence doesnt get updated
-                old_will = copy(self.player.will)
-                old_influence = copy(self.game.influence)
+                old_will = copy.deepcopy(self.player.will)
+                old_influence = copy.deepcopy(self.game.influence)
                 #put one card in the influence the other card in the will 
                 log.debug(''.join([self.player.name,' add to will ',str(cards[i]), " add to influence ", str(cards[1-i])] ))
                 self.player.update_will(cards[i])

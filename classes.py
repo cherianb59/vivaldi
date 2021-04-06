@@ -85,7 +85,7 @@ class Player():
     #when given two cards, choose where to place
     def choose(self,cards):
         #Make the ai choose the cards
-        chosen_cards = self.ai.choose(cards)
+        chosen_cards = self.ai.choose(list(cards))
         log.debug(''.join([self.name ,' choice ', "Will:",str(chosen_cards[0]) , " influence:", str(chosen_cards[1]) ]))
         self.update_will(chosen_cards[0])
         self.game.update_influence(chosen_cards[1])
@@ -95,7 +95,7 @@ class Player():
     #choose two cards to give to the other player
     def ask(self):
         #move the asked cards to the first two positions of the hand
-        ask_cards = list(self.ai.ask(self.hand))
+        ask_cards = self.ai.ask(self.hand)
         log.debug(''.join([self.name ,' ask ', str(self.hand[0]) , " ", str(self.hand[1]) ]))
         #remove cards from hand
         self.hand.remove(ask_cards[0])
