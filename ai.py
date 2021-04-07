@@ -5,11 +5,84 @@ from itertools import combinations
 import copy
 
 class PlayerAI():
-    def __init__(self, player, game, ai_type= "random"):
+    def __init__(self, player, ai_type= "random"):
         self.player = player 
-        self.game = game
         self.ai_type = ai_type
+        self.game = self.player.game
+        self.n_epochs = 5
 
+    def initialize_ai(self):
+        self.construct_input()
+        self.input_dim = len(self.current_input)
+
+        self.construct_dice_ai()
+        self.construct_buy_ai()        
+
+    def construct_input(self):
+        #construct input for each player state 
+        self.current_input = self.player.complete_serialize()    
+
+    def construct_choose_ai(self):
+        """
+        there is only one extra input: whether to place as is or to swap 
+        """
+        additional_inputs = 1
+        self.choose_ai = self.generic_ai(additional_inputs)    
+
+    def generic_ai(self, additional_inputs):
+        ai = Sequential()
+        ai.add(Dense(512, input_shape = (self.input_dim + additional_inputs,) ) )
+        ai.add(Dropout(0.1))
+        ai.add(Activation('relu'))
+        ai.add(Dense(256))
+        ai.add(Dropout(0.05))
+        ai.add(Activation('relu'))
+        ai.add(Dense(128))
+        ai.add(Dropout(0.05))
+        ai.add(Activation('relu'))
+        ai.add(Dense(2))
+        ai.add(Activation('softmax'))
+        opt = keras.optimizers.SGD(nesterov=True,momentum=0.1)
+        ai.compile(loss='categorical_crossentropy',
+                  optimizer=opt,
+                  metrics=['accuracy'])
+        return ai 
+
+    def decide_choose(self):
+        """
+        returns whether to place the cards as they are or to switch 
+        """
+        probs = self.AI.eval_choose()
+        choice = choose_from_probs(probs)
+        
+        if choice == 0  :return(cards)
+            else: return(cards[::-1])
+            
+    def eval_choose(self):
+        #0 = as is, 1 = swap
+        extra_input = np.identity(1)
+        input = self.merge_input(extra_input)
+        preds = self.choose_ai.predict(input)
+        return preds[:,1]        
+
+
+def train(self):
+    """trains both AI
+    any network without training data will be skipped
+    choose | ask 
+    """
+    if len(player.choose_history) <> 0:
+        choose_x = np.asarray(player.choose_history)[:,0,:] 
+        choose_y = keras.utils.to_categorical(player.choose_history_win, 2)
+        self.choose_ai.fit(choose_x, choose_y, epochs = 10, batch_size = 100, verbose=0)    
+    if len(player.ask_history) <> 0:
+        ask_x = np.asarray(player.ask_history)[:,0,:] 
+        ask_y = keras.utils.to_categorical(player.ask_history_win, 2)
+        self.ask_ai.fit(ask_x, ask_y, epochs = 10, batch_size = 100, verbose=0)    
+
+
+
+        
     def ask(self, hand):
     #move the asked cards to the start of the hand and return the hand
         if self.ai_type in ("random") :
@@ -25,9 +98,9 @@ class PlayerAI():
             opposition = self.game.players[1 - self.player.id]
             
             #store things that are going to change and need to be reverted
-            opposition_ai = copy.deepcopy(opposition.ai.ai_type)
-            old_will = copy.deepcopy(opposition.will)
-            old_influence = copy.deepcopy(self.game.influence)
+            opposition_ai = copy.copy(opposition.ai.ai_type)
+            old_will = copy.copy(opposition.will)
+            old_influence = copy.copy(self.game.influence)
             
             opposition.ai_type = "minimax"
             
@@ -49,8 +122,8 @@ class PlayerAI():
                 #print(ask_candidate, points_difference, opposition.will, self.game.influence)
                 log.debug(''.join(["player score:", str(self.player.score) ,"opposition score:",  str(opposition.score), " points diff: ",str(points_difference)] ))
                 #revert changes
-                opposition.will = copy.deepcopy(old_will)
-                self.game.influence = copy.deepcopy(old_influence)
+                opposition.will = copy.copy(old_will)
+                self.game.influence = copy.copy(old_influence)
                 #compare to best choice
                 if points_difference >= ask_max_points_difference:
                     ask_max_points_difference = points_difference
@@ -73,8 +146,8 @@ class PlayerAI():
             for i in range(2):
                 #copy the attributes that will change
                 #TODO Check old_will, old_influcence doesnt get updated
-                old_will = copy.deepcopy(self.player.will)
-                old_influence = copy.deepcopy(self.game.influence)
+                old_will = copy.copy(self.player.will)
+                old_influence = copy.copy(self.game.influence)
                 #put one card in the influence the other card in the will 
                 log.debug(''.join([self.player.name,' add to will ',str(cards[i]), " add to influence ", str(cards[1-i])] ))
                 self.player.update_will(cards[i])
@@ -92,3 +165,7 @@ class PlayerAI():
                 
             if points_difference[0] > points_difference[1] :return(cards)
             else: return(cards[::-1])
+
+    
+
+    

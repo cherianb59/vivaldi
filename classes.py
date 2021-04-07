@@ -2,6 +2,15 @@
 season_names = {"q":"Summer","w":"Autumn","e":"Winter","r":"Spring"} 
 season_short = ["q","w","e","r"]
 rank_quantity = {1:4, 2:6, 3:2}
+powers = [1,2,3]
+
+card_list = []
+for p in rank_quantity:
+    for s in season_short: 
+        card_list.append(s+str(p))
+card_list = tuple(card_list)
+
+
 import logging
 log = logging.getLogger(__name__)
 
@@ -9,7 +18,7 @@ import importlib
 import ai
 importlib.reload(ai)
 import random 
-from copy import copy 
+from collections import Counter
 
 class Card():
     def __init__(self, season, power):
@@ -54,7 +63,8 @@ class Player():
         self.seasons_won = 0 
         self.game = game
         self.ai = ai.PlayerAI(self,self.game,AI_type)
-        
+        self.hand_counter = {}
+
     def __lt__(self, other): 
         return(self.score < other.score or  (self.score == other.score and self.seasons_won < other.seasons_won )  )
 
@@ -78,7 +88,14 @@ class Player():
         #move cards into hand
         
         self.hand = deck[0:HAND_SIZE]
+        #convert hand to list of how much of each card. used for neural network, needs state of game to have similar representation for similar states.
+        #
+        hand_d = Counter([str(x) for x in self.hand])
+        for c in card_list:
+            self.hand_counter[c] = hand_d.get(c,0)
+            
         self.deck = deck[HAND_SIZE:]
+        
         log.debug(''.join([self.name ,' hand '] + [str(x)+" " for x in self.hand]))
         log.debug(''.join([self.name ,' deck '] + [str(x)+" " for x in self.deck]))
 
@@ -115,7 +132,7 @@ class Game():
     def __init__(self, id, seed  = None):
         self.influence = {"q":0,"w":0,"e":0,"r":0}
         self.id = id
-        self.players =  [Player(self, 0, "minimax") , Player(self, 1, "minimax")] 
+        self.players =  [Player(self, 0, "random") , Player(self, 1, "random")] 
         if seed != None:
             random.seed(seed)
         self.game_stats = {}
@@ -126,10 +143,10 @@ class Game():
 
         #create a full deck of cards
         #iterate through powers then seasons
-        for j in rank_quantity:
-            for c in season_short: 
-                for i in range(rank_quantity[j]):
-                    self.full_deck[j-1].append(Card(c,j))
+        for p in rank_quantity:
+            for s in season_short: 
+                for i in range(rank_quantity[p]):
+                    self.full_deck[p - 1].append(Card(s,p))
         
     #deal teh cards
     def deal(self):
@@ -177,13 +194,14 @@ class Game():
         
     def winner(self):
         for p in self.players:
-            max_other_score = max(x.score for x in self.players if x.name != p.name )
+            opposition = p.game.players[1 - p.id]
+            max_other_score = opposition.score 
             #check that this player has maximum score
             if p.score > max_other_score :
                 return(p)
             #if they have tied for max points check seasons won
             if p.score == max_other_score :
-                if p.seasons_won > max(x.seasons_won for x in self.players if x.name != p.name ) :
+                if p.seasons_won > opposition.seasons_won :
                     return(p)
             #if no one wins, its a draw
         return(None)
@@ -199,7 +217,7 @@ class Game():
             turn_stats["p" + str(i) + " ask"] = [str(x) for x in ask]
             choose = opposition.choose(ask)
             turn_stats["p" + str(1-i) + " choose"] = [str(x) for x in choose]
-        #at the end of the turn figure out the scores, not necessary but probably useful for ML
+        #at the end of the turn figure out the scores
         self.scoring()    
         turn_stats['influence'] = self.influence
         #add cards to the hand record player stats

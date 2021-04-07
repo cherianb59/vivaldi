@@ -1,5 +1,6 @@
 import classes #import the module here, so that it can be reloaded.
 import pandas as pd
+from collections import Counter
 
 game_cols = ['p1_deck','p1 score','p2_deck','p2 score','p1 will','p2 will','influence','winner','draw']
 game_data = {}
