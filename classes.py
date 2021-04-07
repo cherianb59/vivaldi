@@ -27,13 +27,10 @@ class Card():
         
     def print_card(self):
         return("".join(["Season:",self.season," Power: ",str(self.power)]))
-        
-    def print_card_short(self):
-        return("".join([self.season,str(self.power)]))
-        
+              
     def __repr__(self):
     #what python prints    if print(Class) is called
-        return(self.print_card_short())
+        return("".join([self.season,str(self.power)]))
         
     #comparison functions
     def __le__(self, other):
@@ -62,7 +59,7 @@ class Player():
         self.score = 0 
         self.seasons_won = 0 
         self.game = game
-        self.ai = ai.PlayerAI(self,self.game,AI_type)
+        self.ai = ai.PlayerAI(self,AI_type)
         self.hand_counter = {}
 
     def __lt__(self, other): 
@@ -132,7 +129,7 @@ class Game():
     def __init__(self, id, seed  = None):
         self.influence = {"q":0,"w":0,"e":0,"r":0}
         self.id = id
-        self.players =  [Player(self, 0, "random") , Player(self, 1, "random")] 
+        #self.players =  [Player(self, 0, "random") , Player(self, 1, "random")] 
         if seed != None:
             random.seed(seed)
         self.game_stats = {}

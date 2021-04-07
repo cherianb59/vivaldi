@@ -56,7 +56,7 @@ class PlayerAI():
         choice = choose_from_probs(probs)
         
         if choice == 0  :return(cards)
-            else: return(cards[::-1])
+        else: return(cards[::-1])
             
     def eval_choose(self):
         #0 = as is, 1 = swap
@@ -66,19 +66,19 @@ class PlayerAI():
         return preds[:,1]        
 
 
-def train(self):
-    """trains both AI
-    any network without training data will be skipped
-    choose | ask 
-    """
-    if len(player.choose_history) <> 0:
-        choose_x = np.asarray(player.choose_history)[:,0,:] 
-        choose_y = keras.utils.to_categorical(player.choose_history_win, 2)
-        self.choose_ai.fit(choose_x, choose_y, epochs = 10, batch_size = 100, verbose=0)    
-    if len(player.ask_history) <> 0:
-        ask_x = np.asarray(player.ask_history)[:,0,:] 
-        ask_y = keras.utils.to_categorical(player.ask_history_win, 2)
-        self.ask_ai.fit(ask_x, ask_y, epochs = 10, batch_size = 100, verbose=0)    
+    def train(self):
+        """trains both AI
+        any network without training data will be skipped
+        choose | ask 
+        """
+        if len(player.choose_history) != 0:
+            choose_x = np.asarray(player.choose_history)[:,0,:] 
+            choose_y = keras.utils.to_categorical(player.choose_history_win, 2)
+            self.choose_ai.fit(choose_x, choose_y, epochs = 10, batch_size = 100, verbose=0)    
+        if len(player.ask_history) != 0:
+            ask_x = np.asarray(player.ask_history)[:,0,:] 
+            ask_y = keras.utils.to_categorical(player.ask_history_win, 2)
+            self.ask_ai.fit(ask_x, ask_y, epochs = 10, batch_size = 100, verbose=0)    
 
 
 
