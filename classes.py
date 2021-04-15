@@ -178,14 +178,17 @@ class Game():
             #calculate socre from scratch
             opposition = p.game.players[1 - p.id]
             p.score = 0 
+            p.points = 0 
             p.seasons_won = 0 
             for s in season_short:
                 if p.will[s] > opposition.will[s] :
-                    p.score += self.influence[s] + p.will[s]
+                    p.points += self.influence[s] + p.will[s]
                     p.seasons_won += 1 
                 elif p.will[s] == opposition.will[s] :
                     pass
-                else: p.score += p.will[s]
+                else: p.points += p.will[s]
+            #having more seasons is better but will never be woth more than points
+            p.score = p.points +  float(p.seasons_won)/10      
             log.debug(p.will)
             log.debug(p.score)
         

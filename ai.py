@@ -5,6 +5,12 @@ from itertools import combinations
 import copy
 
 class PlayerAI():
+    '''
+    This class handles decision making
+    three options random
+                minimax depth 1 minimax depth2
+                neural network - this works by creating a network for each type of decision, the input consists of the game state and the decision that was made and the output is the result of the game                           (win/loss/draw). In essence an evaluation function. The network makes decisions by evaluating each possible candidate and using the choice that gives the highest output. 
+    '''
     def __init__(self, player, ai_type= "random"):
         self.player = player 
         self.ai_type = ai_type
@@ -29,6 +35,13 @@ class PlayerAI():
         additional_inputs = 1
         self.choose_ai = self.generic_ai(additional_inputs)    
 
+    def construct_ask_ai(self):
+        """
+        each possible two card combination is an input
+        """
+        additional_inputs = 13*12/2
+        self.ask_ai = self.generic_ai(additional_inputs)    
+        
     def generic_ai(self, additional_inputs):
         ai = Sequential()
         ai.add(Dense(512, input_shape = (self.input_dim + additional_inputs,) ) )
@@ -79,9 +92,6 @@ class PlayerAI():
             ask_x = np.asarray(player.ask_history)[:,0,:] 
             ask_y = keras.utils.to_categorical(player.ask_history_win, 2)
             self.ask_ai.fit(ask_x, ask_y, epochs = 10, batch_size = 100, verbose=0)    
-
-
-
         
     def ask(self, hand):
     #move the asked cards to the start of the hand and return the hand
@@ -139,7 +149,7 @@ class PlayerAI():
             random.shuffle(cards)
             return(cards)        
         #try both pairs, choose whichever gives highest points 
-        if self.ai_type == "minimax":            
+        if self.ai_type in ("minimax","minimax2"):            
             log.debug(''.join([self.player.name,' minimax choose']))
             points_difference = [0,0]
             #self.player.id refers to the player who is choosing
@@ -148,22 +158,37 @@ class PlayerAI():
                 #TODO Check old_will, old_influcence doesnt get updated
                 old_will = copy.copy(self.player.will)
                 old_influence = copy.copy(self.game.influence)
+                old_opposition_will = copy.copy(opposition.will)
+                
                 #put one card in the influence the other card in the will 
                 log.debug(''.join([self.player.name,' add to will ',str(cards[i]), " add to influence ", str(cards[1-i])] ))
                 self.player.update_will(cards[i])
                 self.game.update_influence(cards[1-i])
                 log.debug(''.join([self.player.name,' will: ',str(self.player.will), " influence: ", str(self.game.influence)] ))                #score this choice
-                self.game.scoring()
+                
+                '''# implement another depth level for minimax for each of my choices of where to place, figure out my opponents choice based on all my ask possibilities
+                if self.ai_type = 'minimax2':
+                    self.ask()
+                    opposition.ai.ai_type = 'minimax'
+                    opposition.ai.choose()
+                    opposition_will = copy.copy(opposition.will)
+                    opposition.update_will(cards[i])
+                    self.game.update_influence(cards[1-i])
+                '''
                 #the relative score is important not the absolute score
+                self.game.scoring()
                 points_difference[i] = self.player.score - opposition.score
                 log.debug(''.join(["player score:", str(self.player.score) ,"opposition score:",  str(opposition.score), " points diff: ",str(points_difference[i]) ] ))
                 
                 #undo changes
-                self.game.players[self.player.id].will = old_will
-                self.game.influence = old_influence
+                self.player.will = copy.copy(old_will)
+                #opposition.ai.ai_type = copy.copy(old_opposition_ai)
+                #opposition.will = copy.copy()
+                #opposition.will = copy.copy(old_opposition_will)
+                self.game.influence = copy.copy(old_influence)
                 self.game.scoring()
                 
-            if points_difference[0] > points_difference[1] :return(cards)
+            if points_difference[0] > points_difference[1] : return(cards)
             else: return(cards[::-1])
 
     
