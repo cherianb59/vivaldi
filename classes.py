@@ -1,15 +1,29 @@
-    #CONSTANTS
-season_names = {"q":"Summer","w":"Autumn","e":"Winter","r":"Spring"} 
-season_short = ["q","w","e","r"]
-rank_quantity = {1:4, 2:6, 3:2}
+#CONSTANTS
+HAND_SIZE = 8
+
+season_names = {"h":"Summer","j":"Autumn","k":"Winter","l":"Spring"} 
+season_short = ["h","j","k","l"]
+powers_quantity = {1:4, 2:6, 3:2}
 powers = [1,2,3]
 
-card_list = []
-for p in rank_quantity:
+#canonical order of all possible cards
+cards = []
+for p in powers:
     for s in season_short: 
-        card_list.append(s+str(p))
-card_list = tuple(card_list)
+        cards.append(s+str(p))
+cards = tuple(cards)
 
+#canonical order of all possible 2 card combinations and permutations
+cards_ask = []
+cards_choose = [] 
+for i1,x1 in enumerate(cards):
+    for i2,x2 in enumerate(cards):
+        if i1 >= i2: cards_ask.append(tuple([x1,x2]))
+cards_choose.append(tuple([x1,x2]))
+cards_ask = tuple(cards_ask)
+cards_choose = tuple(cards_choose)
+cards_ask_lut = {x:i for i,x in enumerate(cards_ask)}
+cards_choose_lut = {x:i for i,x in enumerate(cards_choose)}
 
 import logging
 log = logging.getLogger(__name__)
@@ -34,7 +48,7 @@ class Card():
         
     #comparison functions
     def __le__(self, other):
-        return(self.season == other.season and self.power <= other.power )
+        return(self.score == other.season and self.power <= other.power )
         
     def __lt__(self, other):
         return(self.season == other.season and self.power < other.power )
@@ -55,41 +69,52 @@ class Player():
     def __init__(self, game, id, AI_type):
         self.id = id
         self.name = "P"+str(id)
-        self.will = {"q":0,"w":0,"e":0,"r":0}
+        self.will = {"h":0,"j":0,"k":0,"l":0}
         self.score = 0 
         self.seasons_won = 0 
         self.game = game
         self.ai = ai.PlayerAI(self,AI_type)
-        self.hand_counter = {}
+        self.hand_counter = [0 for x in cards]
 
     def __lt__(self, other): 
-        return(self.score < other.score or  (self.score == other.score and self.seasons_won < other.seasons_won )  )
+        return(self.score < other.score   )
 
     def __le__(self, other): 
-        return(self < other or self==other )
+        return(self.score <= other.score    )
 
     def __gt__(self, other): 
-        return(self.score > other.score or  (self.score == other.score and self.seasons_won > other.seasons_won )  )
+        return(self.score > other.score    )
 
     def __ge__(self, other): 
-        return(self > other or self==other )
+        return(self.score >= other.score    )
         
     def __eq__(self, other): 
         if self is None and other is None: return(True)
-        elif self.score == other.score and self.seasons_won == other.seasons_won :return(True)
-        else: return(False)
+        else: return(self.score == other.score )
+
+    def complete_serialize(self):
+        state = []
+        opposition = self.game.players[1 - p.id]
+        
+        state = state + [self.game.turn]
+        #players will
+        state = state + [self.will[x] for x in season_short]
+        state = state + [self.score]
+        #opponents will
+        state = state + [opposition.will[x] for x in season_short]
+        state = state + [opposition.score]
+        #influence
+        state = state + [self.game.influence[x] for x in season_short]
+        #my hand
+        state = state + self.hand_counter
+        return(state)
         
         
     def give_deck(self,deck):
-        HAND_SIZE = 8
         #move cards into hand
         
         self.hand = deck[0:HAND_SIZE]
         #convert hand to list of how much of each card. used for neural network, needs state of game to have similar representation for similar states.
-        #
-        hand_d = Counter([str(x) for x in self.hand])
-        for c in card_list:
-            self.hand_counter[c] = hand_d.get(c,0)
             
         self.deck = deck[HAND_SIZE:]
         
@@ -109,7 +134,7 @@ class Player():
     #choose two cards to give to the other player
     def ask(self):
         #move the asked cards to the first two positions of the hand
-        ask_cards = self.ai.ask(self.hand)
+        ask_cards = self.ai.ask()
         log.debug(''.join([self.name ,' ask ', str(self.hand[0]) , " ", str(self.hand[1]) ]))
         #remove cards from hand
         self.hand.remove(ask_cards[0])
@@ -125,9 +150,15 @@ class Player():
     def update_will(self,card):
         self.will[card.season] += card.power
     
+    def hand_counter(self):
+    #zero out the hand and then increment indexes if that cards is in the hand
+        self.hand_counter = [0 for x in cards]
+        for c in hand:
+            self.hand_counter[cards_lut[str(c)]] += 1
+    
 class Game():
     def __init__(self, id, seed  = None):
-        self.influence = {"q":0,"w":0,"e":0,"r":0}
+        self.influence = {"h":0,"j":0,"k":0,"l":0}
         self.id = id
         #self.players =  [Player(self, 0, "random") , Player(self, 1, "random")] 
         if seed != None:
@@ -140,9 +171,9 @@ class Game():
 
         #create a full deck of cards
         #iterate through powers then seasons
-        for p in rank_quantity:
+        for p in powers_quantity:
             for s in season_short: 
-                for i in range(rank_quantity[p]):
+                for i in range(powers_quantity[p]):
                     self.full_deck[p - 1].append(Card(s,p))
         
     #deal teh cards
@@ -150,7 +181,7 @@ class Game():
         num_piles = 8
         #shuffle the three decks, place into 8 piles, igve the first three to first player next three to seond player, last two arent used
         piles = [[] for _ in range(num_piles)]
-        for j in rank_quantity:
+        for j in powers_quantity:
             random.shuffle(self.full_deck[j-1])
             for i, card in enumerate(self.full_deck[j-1]):
                 pile_num = i%num_piles

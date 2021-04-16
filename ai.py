@@ -30,9 +30,9 @@ class PlayerAI():
 
     def construct_choose_ai(self):
         """
-        there is only one extra input: whether to place as is or to swap 
+        each possible two cards is an input
         """
-        additional_inputs = 1
+        additional_inputs = 12*12
         self.choose_ai = self.generic_ai(additional_inputs)    
 
     def construct_ask_ai(self):
@@ -93,13 +93,13 @@ class PlayerAI():
             ask_y = keras.utils.to_categorical(player.ask_history_win, 2)
             self.ask_ai.fit(ask_x, ask_y, epochs = 10, batch_size = 100, verbose=0)    
         
-    def ask(self, hand):
+    def ask(self):
     #move the asked cards to the start of the hand and return the hand
         if self.ai_type in ("random") :
             log.debug(''.join([self.player.name,' random ask']))
-            random.shuffle(hand)
-            return(hand[0:2])        
-        if self.ai_type == "minimax":            
+            random.shuffle(self.player.hand)
+            return(self.player.hand[0:2])        
+        if self.ai_type in ("minimax","minimax2"):            
             log.debug(''.join([self.player.name,' minimax ask']))
             #try all the choices and find the best one, assume the other player will use minimax to choose the cards
             ask_max_points_difference = -999
@@ -107,14 +107,14 @@ class PlayerAI():
             
             opposition = self.game.players[1 - self.player.id]
             
-            #store things that are going to change and need to be reverted
+            #store vars that are going to change and need to be reverted
             opposition_ai = copy.copy(opposition.ai.ai_type)
             old_will = copy.copy(opposition.will)
             old_influence = copy.copy(self.game.influence)
             
             opposition.ai_type = "minimax"
             
-            for ask_candidate in combinations(hand,2) : 
+            for ask_candidate in combinations(self.player.hand,2) : 
                 
                 log.debug(''.join([self.player.name,' ask candidate'] + [ str(c) for c in ask_candidate] ))
                 #give the opposition the candidate cards, they will choose which card gets played where
@@ -138,7 +138,7 @@ class PlayerAI():
                 if points_difference >= ask_max_points_difference:
                     ask_max_points_difference = points_difference
                     ask_option = ask_candidate
-            opposition.ai_type = opposition_ai 
+            opposition.ai_type = copy.copy(opposition_ai)
             
             return(ask_option)
         
