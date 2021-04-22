@@ -4,6 +4,18 @@ import random
 from itertools import combinations
 import copy
 
+def choose_from_probs(probs, constraint_mask = None):
+	#will almost always make optimal decision; 
+    if constraint_mask:
+        probs = probs * constraint_mask
+    probs = probs * (probs==np.max(probs)) + (probs**2 * 0.01 + 0.001)/len(probs)
+    if constraint_mask:
+        probs = probs * constraint_mask
+
+	probs = probs/np.sum(probs)
+	choice = rchoice(range(len(probs)), size=1, p=probs)
+	return choice[0]
+
 class PlayerAI():
     '''
     This class handles decision making
@@ -15,14 +27,15 @@ class PlayerAI():
         self.player = player 
         self.ai_type = ai_type
         self.game = self.player.game
-        self.n_epochs = 5
-
+        if ai_type = "nn":
+            self.n_epochs = 5
+            self.initialize_ai()
+            
     def initialize_ai(self):
         self.construct_input()
         self.input_dim = len(self.current_input)
-
-        self.construct_dice_ai()
-        self.construct_buy_ai()        
+        self.construct_choose_ai()
+        self.construct_ask_ai()        
 
     def construct_input(self):
         #construct input for each player state 
@@ -61,24 +74,60 @@ class PlayerAI():
                   metrics=['accuracy'])
         return ai 
 
-    def decide_choose(self):
+    def decide_choose(self,choose_cards):
         """
         returns whether to place the cards as they are or to switch 
         """
         probs = self.AI.eval_choose()
-        choice = choose_from_probs(probs)
-        
-        if choice == 0  :return(cards)
-        else: return(cards[::-1])
-            
+        choice = choose_from_probs(probs,self.player.create_choose_mask(choose_cards))
+        #convert choice to index then to cards
+        choose_choice = cards_choose[choice]
+		if str(choose_cards[0]),str(choose_cards[1]) == choose_choice : return choose_cards
+		else return(choose_cards[::-1])
+                    
     def eval_choose(self):
-        #0 = as is, 1 = swap
-        extra_input = np.identity(1)
+        extra_input = np.identity(12*12)
         input = self.merge_input(extra_input)
         preds = self.choose_ai.predict(input)
         return preds[:,1]        
 
+	def record_choose(self):
+		extra_input = np.zeros( (1,12*12) )
+		extra_input[0,self.player.choose] = 1
+		input = self.merge_input(extra_input)
+		self.player.choose_history.append(input)
+            
+    def decide_ask(self):
+        """
+        returns whether to place the cards as they are or to switch 
+        """
+        probs = self.AI.eval_ask()
+        choice = choose_from_probs(probs,self.player.create_ask_mask(self.player.hand))
+        #convert choice to index then to cards
+        ask_choice = ask_choose[choice]
+		return(str_to_Card(ask_choice[0]),str_to_Card(ask_choice[1]))
+    
+    def eval_ask(self):
+        extra_input = np.identity(13*12/2)
+        input = self.merge_input(extra_input)
+        preds = self.ask_ai.predict(input)
+        return preds[:,1]        
 
+	def record_ask(self):
+		extra_input = np.zeros( (1,13*12/2) )
+		extra_input[0,self.player.choose] = 1
+		input = self.merge_input(extra_input)
+		self.player.ask_history.append(input)
+    
+	def merge_input(self, extra_input):
+		self.construct_input()
+		extra_input_height = extra_input.shape[0]
+		return np.column_stack((np.repeat([self.current_input], extra_input_height, 0), extra_input))
+    
+	def construct_input(self):
+		#construct input for each player state 
+		self.current_input = self.player.complete_serialize()
+        
     def train(self):
         """trains both AI
         any network without training data will be skipped
@@ -88,6 +137,7 @@ class PlayerAI():
             choose_x = np.asarray(player.choose_history)[:,0,:] 
             choose_y = keras.utils.to_categorical(player.choose_history_win, 2)
             self.choose_ai.fit(choose_x, choose_y, epochs = 10, batch_size = 100, verbose=0)    
+            
         if len(player.ask_history) != 0:
             ask_x = np.asarray(player.ask_history)[:,0,:] 
             ask_y = keras.utils.to_categorical(player.ask_history_win, 2)
@@ -99,6 +149,14 @@ class PlayerAI():
             log.debug(''.join([self.player.name,' random ask']))
             random.shuffle(self.player.hand)
             return(self.player.hand[0:2])        
+        
+        if self.ai_type in ("nn") :
+            self.create_ask_mask()
+            probs = self.eval_ask()
+            ask_choice = choose_from_probs(probs, constraint_mask = self.ask_mask)
+            self.record_ask()
+            return(ask_choice)
+        
         if self.ai_type in ("minimax","minimax2"):            
             log.debug(''.join([self.player.name,' minimax ask']))
             #try all the choices and find the best one, assume the other player will use minimax to choose the cards

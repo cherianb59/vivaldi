@@ -1,29 +1,3 @@
-#CONSTANTS
-HAND_SIZE = 8
-
-season_names = {"h":"Summer","j":"Autumn","k":"Winter","l":"Spring"} 
-season_short = ["h","j","k","l"]
-powers_quantity = {1:4, 2:6, 3:2}
-powers = [1,2,3]
-
-#canonical order of all possible cards
-cards = []
-for p in powers:
-    for s in season_short: 
-        cards.append(s+str(p))
-cards = tuple(cards)
-
-#canonical order of all possible 2 card combinations and permutations
-cards_ask = []
-cards_choose = [] 
-for i1,x1 in enumerate(cards):
-    for i2,x2 in enumerate(cards):
-        if i1 >= i2: cards_ask.append(tuple([x1,x2]))
-cards_choose.append(tuple([x1,x2]))
-cards_ask = tuple(cards_ask)
-cards_choose = tuple(cards_choose)
-cards_ask_lut = {x:i for i,x in enumerate(cards_ask)}
-cards_choose_lut = {x:i for i,x in enumerate(cards_choose)}
 
 import logging
 log = logging.getLogger(__name__)
@@ -32,10 +6,17 @@ import importlib
 import ai
 importlib.reload(ai)
 import random 
-from collections import Counter
+from keras.models import load_model         
+import constants
+
+def str_to_Card(in_str):
+    '''convert str representation of a card back to a Card object'''
+    return(Card(in_str[0], int(in_str[1])))
 
 class Card():
-    def __init__(self, season, power):
+    def __init__(self, season, power=None):
+        if power==None and len(season)==2:
+            
         self.season = season
         self.power = power  
         
@@ -92,7 +73,11 @@ class Player():
         if self is None and other is None: return(True)
         else: return(self.score == other.score )
 
+        
     def complete_serialize(self):
+        '''
+        encode the game state for this player, we dont know the oppositions hand
+        '''
         state = []
         opposition = self.game.players[1 - p.id]
         
@@ -109,11 +94,11 @@ class Player():
         state = state + self.hand_counter
         return(state)
         
-        
     def give_deck(self,deck):
         #move cards into hand
         
         self.hand = deck[0:HAND_SIZE]
+        self.hand_counter()
         #convert hand to list of how much of each card. used for neural network, needs state of game to have similar representation for similar states.
             
         self.deck = deck[HAND_SIZE:]
@@ -130,15 +115,15 @@ class Player():
         self.game.update_influence(chosen_cards[1])
         return(chosen_cards)
         
-    
     #choose two cards to give to the other player
     def ask(self):
         #move the asked cards to the first two positions of the hand
         ask_cards = self.ai.ask()
-        log.debug(''.join([self.name ,' ask ', str(self.hand[0]) , " ", str(self.hand[1]) ]))
+        log.debug(''.join([self.name ,' ask ', str(ask_cards[0]) , " ", str(ask_cards[1]) ]))
         #remove cards from hand
         self.hand.remove(ask_cards[0])
         self.hand.remove(ask_cards[1])
+        self.hand_counter()
         return(ask_cards)
     
     def replenish(self):
@@ -146,23 +131,58 @@ class Player():
         if len(self.deck) > 0:
             self.hand = self.hand + self.deck[0:2]
             self.deck = self.deck[2:]
+        self.hand_counter()
 
     def update_will(self,card):
         self.will[card.season] += card.power
     
     def hand_counter(self):
-    #zero out the hand and then increment indexes if that cards is in the hand
+    #zero out the hand and then increment card indexes if that cards is in the hand
         self.hand_counter = [0 for x in cards]
         for c in hand:
             self.hand_counter[cards_lut[str(c)]] += 1
-    
+ 
+    def create_ask_swap_mask(self) :
+		mask = np.zeroes(cards_ask)
+        # make all combinations of cards in hand and if they exist in cards_ask_lut then change the mask to 1
+		for i1,c1 in enumerate(hand):
+			for i2,c2 in enumerate(hand):
+                #dont pick same card in hand
+				if i1!=i2:
+                    #iterating twice will give both orders of pairs
+					if cards_lut[str(c1)]>= cards_lut[str(c2)]:
+						mask[cards_ask_lut[(str(c1),str(c2)]] = 1				
+	    return(mask)
+
+    def create_choose_swap_mask(choose_cards) :
+		#make whole mask zero except for two permutations of the choose cards
+		mask = np.zeroes(cards_choose)
+		mask[cards_choose_lut[(str(choose_cards[0]),str(choose_cards[1])] = 1				
+		mask[cards_choose_lut[(str(choose_cards[1]),str(choose_cards[0])] = 1				
+	    return(mask)
+	    
+    def load_ai(self):
+        """
+        make sure to call this before created a SharedAI object so that the new AIs are used for the non-base player
+        """
+        self.AI.choose_ai = load_model(self.name + '_dice_ai_%d.h5' % self.id)
+        self.AI.ask_ai = load_model(self.name + '_reroll_ai_%d.h5' % self.id)
+
+    def save_ai(self):
+        ai = self.AI 
+        ai.choose_ai.save(self.name + '_choose_ai_%d.h5' % self.id)
+        ai.ask_ai.save(self.name + '_ask_ai_%d.h5' % self.id)
+
+                               
 class Game():
     def __init__(self, id, seed  = None):
         self.influence = {"h":0,"j":0,"k":0,"l":0}
         self.id = id
-        #self.players =  [Player(self, 0, "random") , Player(self, 1, "random")] 
-        if seed != None:
-            random.seed(seed)
+        #use spcified seed, otherwise use id
+        if seed != None: random.seed(seed)
+        else : random.seed(id)
+            
+        #store stats for game and turn
         self.game_stats = {}
         self.turn_stats = []
         self.turn_number = 0 
@@ -179,7 +199,7 @@ class Game():
     #deal teh cards
     def deal(self):
         num_piles = 8
-        #shuffle the three decks, place into 8 piles, igve the first three to first player next three to seond player, last two arent used
+        #shuffle the three decks, place into 8 piles, igve the first three to first player next three to seond player, last two piles arent used
         piles = [[] for _ in range(num_piles)]
         for j in powers_quantity:
             random.shuffle(self.full_deck[j-1])
@@ -206,7 +226,7 @@ class Game():
     def scoring(self):
         log.debug(self.influence)
         for p in self.players:
-            #calculate socre from scratch
+            #calculate score from scratch
             opposition = p.game.players[1 - p.id]
             p.score = 0 
             p.points = 0 
@@ -218,7 +238,7 @@ class Game():
                 elif p.will[s] == opposition.will[s] :
                     pass
                 else: p.points += p.will[s]
-            #having more seasons is better but will never be woth more than points
+            #combine seasons and points into score, having more seasons is better but will never be woth more than points
             p.score = p.points +  float(p.seasons_won)/10      
             log.debug(p.will)
             log.debug(p.score)
