@@ -7,7 +7,7 @@ import ai
 importlib.reload(ai)
 import random 
 from keras.models import load_model         
-import constants
+from constants import *
 
 def str_to_Card(in_str):
     '''convert str representation of a card back to a Card object'''
@@ -15,10 +15,13 @@ def str_to_Card(in_str):
 
 class Card():
     def __init__(self, season, power=None):
+        #todo add list version
         if power==None and len(season)==2:
-            
-        self.season = season
-        self.power = power  
+            self.season = season[0]
+            self.power = int(season[1])
+        else:    
+            self.season = season
+            self.power = power  
         
     def print_card(self):
         return("".join(["Season:",self.season," Power: ",str(self.power)]))
@@ -98,7 +101,7 @@ class Player():
         #move cards into hand
         
         self.hand = deck[0:HAND_SIZE]
-        self.hand_counter()
+        self.hand_count()
         #convert hand to list of how much of each card. used for neural network, needs state of game to have similar representation for similar states.
             
         self.deck = deck[HAND_SIZE:]
@@ -123,7 +126,7 @@ class Player():
         #remove cards from hand
         self.hand.remove(ask_cards[0])
         self.hand.remove(ask_cards[1])
-        self.hand_counter()
+        self.hand_count()
         return(ask_cards)
     
     def replenish(self):
@@ -131,36 +134,36 @@ class Player():
         if len(self.deck) > 0:
             self.hand = self.hand + self.deck[0:2]
             self.deck = self.deck[2:]
-        self.hand_counter()
+        self.hand_count()
 
     def update_will(self,card):
         self.will[card.season] += card.power
     
-    def hand_counter(self):
+    def hand_count(self):
     #zero out the hand and then increment card indexes if that cards is in the hand
         self.hand_counter = [0 for x in cards]
-        for c in hand:
+        for c in self.hand:
             self.hand_counter[cards_lut[str(c)]] += 1
  
     def create_ask_swap_mask(self) :
-		mask = np.zeroes(cards_ask)
+        mask = np.zeroes(cards_ask)
         # make all combinations of cards in hand and if they exist in cards_ask_lut then change the mask to 1
-		for i1,c1 in enumerate(hand):
-			for i2,c2 in enumerate(hand):
+        for i1,c1 in enumerate(hand):
+            for i2,c2 in enumerate(hand):
                 #dont pick same card in hand
-				if i1!=i2:
+                if i1!=i2:
                     #iterating twice will give both orders of pairs
-					if cards_lut[str(c1)]>= cards_lut[str(c2)]:
-						mask[cards_ask_lut[(str(c1),str(c2)]] = 1				
-	    return(mask)
+                    if cards_lut[str(c1)]>= cards_lut[str(c2)]:
+                        mask[cards_ask_lut[str(c1),str(c2)]] = 1                
+        return(mask)
 
     def create_choose_swap_mask(choose_cards) :
-		#make whole mask zero except for two permutations of the choose cards
-		mask = np.zeroes(cards_choose)
-		mask[cards_choose_lut[(str(choose_cards[0]),str(choose_cards[1])] = 1				
-		mask[cards_choose_lut[(str(choose_cards[1]),str(choose_cards[0])] = 1				
-	    return(mask)
-	    
+        #make whole mask zero except for two permutations of the choose cards
+        mask = np.zeroes(cards_choose)
+        mask[cards_choose_lut[(str(choose_cards[0]),str(choose_cards[1]))]] = 1                
+        mask[cards_choose_lut[(str(choose_cards[1]),str(choose_cards[0]))]] = 1                
+        return(mask)
+        
     def load_ai(self):
         """
         make sure to call this before created a SharedAI object so that the new AIs are used for the non-base player

@@ -5,16 +5,16 @@ from itertools import combinations
 import copy
 
 def choose_from_probs(probs, constraint_mask = None):
-	#will almost always make optimal decision; 
+    #will almost always make optimal decision; 
     if constraint_mask:
         probs = probs * constraint_mask
     probs = probs * (probs==np.max(probs)) + (probs**2 * 0.01 + 0.001)/len(probs)
     if constraint_mask:
         probs = probs * constraint_mask
 
-	probs = probs/np.sum(probs)
-	choice = rchoice(range(len(probs)), size=1, p=probs)
-	return choice[0]
+    probs = probs/np.sum(probs)
+    choice = rchoice(range(len(probs)), size=1, p=probs)
+    return choice[0]
 
 class PlayerAI():
     '''
@@ -27,7 +27,7 @@ class PlayerAI():
         self.player = player 
         self.ai_type = ai_type
         self.game = self.player.game
-        if ai_type = "nn":
+        if ai_type == "nn":
             self.n_epochs = 5
             self.initialize_ai()
             
@@ -82,8 +82,8 @@ class PlayerAI():
         choice = choose_from_probs(probs,self.player.create_choose_mask(choose_cards))
         #convert choice to index then to cards
         choose_choice = cards_choose[choice]
-		if str(choose_cards[0]),str(choose_cards[1]) == choose_choice : return choose_cards
-		else return(choose_cards[::-1])
+        if [str(choose_cards[0]),str(choose_cards[1])] == choose_choice : return choose_cards
+        else: return(choose_cards[::-1])
                     
     def eval_choose(self):
         extra_input = np.identity(12*12)
@@ -91,11 +91,11 @@ class PlayerAI():
         preds = self.choose_ai.predict(input)
         return preds[:,1]        
 
-	def record_choose(self):
-		extra_input = np.zeros( (1,12*12) )
-		extra_input[0,self.player.choose] = 1
-		input = self.merge_input(extra_input)
-		self.player.choose_history.append(input)
+    def record_choose(self):
+        extra_input = np.zeros( (1,12*12) )
+        extra_input[0,self.player.choose] = 1
+        input = self.merge_input(extra_input)
+        self.player.choose_history.append(input)
             
     def decide_ask(self):
         """
@@ -105,7 +105,7 @@ class PlayerAI():
         choice = choose_from_probs(probs,self.player.create_ask_mask(self.player.hand))
         #convert choice to index then to cards
         ask_choice = ask_choose[choice]
-		return(str_to_Card(ask_choice[0]),str_to_Card(ask_choice[1]))
+        return(str_to_Card(ask_choice[0]),str_to_Card(ask_choice[1]))
     
     def eval_ask(self):
         extra_input = np.identity(13*12/2)
@@ -113,20 +113,20 @@ class PlayerAI():
         preds = self.ask_ai.predict(input)
         return preds[:,1]        
 
-	def record_ask(self):
-		extra_input = np.zeros( (1,13*12/2) )
-		extra_input[0,self.player.choose] = 1
-		input = self.merge_input(extra_input)
-		self.player.ask_history.append(input)
+    def record_ask(self):
+        extra_input = np.zeros( (1,13*12/2) )
+        extra_input[0,self.player.choose] = 1
+        input = self.merge_input(extra_input)
+        self.player.ask_history.append(input)
     
-	def merge_input(self, extra_input):
-		self.construct_input()
-		extra_input_height = extra_input.shape[0]
-		return np.column_stack((np.repeat([self.current_input], extra_input_height, 0), extra_input))
+    def merge_input(self, extra_input):
+        self.construct_input()
+        extra_input_height = extra_input.shape[0]
+        return np.column_stack((np.repeat([self.current_input], extra_input_height, 0), extra_input))
     
-	def construct_input(self):
-		#construct input for each player state 
-		self.current_input = self.player.complete_serialize()
+    def construct_input(self):
+        #construct input for each player state 
+        self.current_input = self.player.complete_serialize()
         
     def train(self):
         """trains both AI
@@ -144,7 +144,16 @@ class PlayerAI():
             self.ask_ai.fit(ask_x, ask_y, epochs = 10, batch_size = 100, verbose=0)    
         
     def ask(self):
+        opposition = self.game.players[1 - self.player.id]
     #move the asked cards to the start of the hand and return the hand
+        if self.ai_type in ("human") :
+            log.debug(''.join([self.player.name,' human ask']))
+            print("Game: ",self.game.influence,"Player: ",self.player.will,"Opposition: ",opposition.will)
+            print([ c for c in self.player.hand])
+            c1 = int(input("card 1 index"))
+            c2 = int(input("card 2 index"))
+            return([self.player.hand[c1],self.player.hand[c2]])
+                
         if self.ai_type in ("random") :
             log.debug(''.join([self.player.name,' random ask']))
             random.shuffle(self.player.hand)
@@ -163,7 +172,7 @@ class PlayerAI():
             ask_max_points_difference = -999
             ask_option = None
             
-            opposition = self.game.players[1 - self.player.id]
+            
             
             #store vars that are going to change and need to be reverted
             opposition_ai = copy.copy(opposition.ai.ai_type)
@@ -202,11 +211,20 @@ class PlayerAI():
         
     def choose(self, cards):
         opposition = self.game.players[1 - self.player.id]
+        if self.ai_type in ("human") :
+            log.debug(''.join([self.player.name,' human choose']))
+            print("Game: ",self.game.influence,"Player: ",self.player.will,"Opposition: ",opposition.will)
+            print([ (i,c) for i,c in enumerate(cards)])
+            swap = input("(S)wap?")
+            if swap != "S": return(cards)
+            else: return(cards[::-1])
+
         if self.ai_type == "random":
             log.debug(''.join([self.player.name,' random choose']))
             random.shuffle(cards)
             return(cards)        
         #try both pairs, choose whichever gives highest points 
+        
         if self.ai_type in ("minimax","minimax2"):            
             log.debug(''.join([self.player.name,' minimax choose']))
             points_difference = [0,0]
