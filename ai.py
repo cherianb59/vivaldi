@@ -3,6 +3,7 @@ log = logging.getLogger(__name__)
 import random 
 from itertools import combinations
 import copy
+from numpy.random import choice as rchoice
 
 def choose_from_probs(probs, constraint_mask = None):
     #will almost always make optimal decision; 

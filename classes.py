@@ -76,6 +76,22 @@ class Player():
         if self is None and other is None: return(True)
         else: return(self.score == other.score )
 
+    def load_ai(self):
+        self.AI.choose_ai = load_model(self.name + '_choose_ai_%d.h5' % self.id)
+		self.AI.ask_ai = load_model(self.name + '_ask_ai_%d.h5' % self.id)
+        print 'loaded ai'
+        
+    def save_ai(self):
+        self.AI.choose_ai.save(self.name + '_choose_ai_%d.h5' % self.id)
+        self.AI.ask_ai.save(self.name + '_choose_ai_%d.h5' % self.id)
+        print 'saved ai'
+    
+    def flush_history(self):
+		"""use for memory purposes and when some data might be irrelevant"""
+		self.choose_history = []
+		self.choose_history_turn = []
+		self.ask_history = []
+		self.ask_history_turn = []
         
     def complete_serialize(self):
         '''
