@@ -15,14 +15,14 @@ def str_to_Card(in_str):
 
 class Card():
     def __init__(self, season, power=None):
-        #todo add list version
+        #multipe ways to define card, Card("h1") , Card("h",1) Card(["h",1])
         if power==None and len(season)==2:
             self.season = season[0]
             self.power = int(season[1])
         else:    
             self.season = season
             self.power = power  
-        
+        #todo add list version
     def print_card(self):
         return("".join(["Season:",self.season," Power: ",str(self.power)]))
               
@@ -50,67 +50,88 @@ class Card():
         return(self.power != other.power or self.season != other.season)
         
 class Player():
-    def __init__(self, game, id, AI_type):
+    def __init__(self,  id, game, AI_type):
         self.id = id
         self.name = "P"+str(id)
+        self.game = game 
+        self.hand_counter = [0 for x in cards]
+        self.ai = ai.PlayerAI(self,AI_type)
         self.will = {"h":0,"j":0,"k":0,"l":0}
         self.score = 0 
         self.seasons_won = 0 
-        self.game = game
-        self.ai = ai.PlayerAI(self,AI_type)
-        self.hand_counter = [0 for x in cards]
+        self.win = 0         
+        self.ask_history = []
+        self.ask_history_win = []
+        self.choose_history = []
+        self.choose_history_win = []
 
     def __lt__(self, other): 
-        return(self.score < other.score   )
+        return(self.score < other.score)
 
     def __le__(self, other): 
-        return(self.score <= other.score    )
+        return(self.score <= other.score)
 
     def __gt__(self, other): 
-        return(self.score > other.score    )
+        return(self.score > other.score)
 
     def __ge__(self, other): 
-        return(self.score >= other.score    )
+        return(self.score >= other.score)
         
     def __eq__(self, other): 
         if self is None and other is None: return(True)
         else: return(self.score == other.score )
 
+    def initialize_ai(self):
+        self.ai.initialize_ai()
+
     def load_ai(self):
-        self.AI.choose_ai = load_model(self.name + '_choose_ai_%d.h5' % self.id)
-		self.AI.ask_ai = load_model(self.name + '_ask_ai_%d.h5' % self.id)
-        print 'loaded ai'
-        
+        self.ai.choose_ai = load_model(self.name + '_choose_ai_%d.h5' % self.id)
+        self.ai.ask_ai = load_model(self.name + '_ask_ai_%d.h5' % self.id)
+        print('loaded ai')
+
     def save_ai(self):
-        self.AI.choose_ai.save(self.name + '_choose_ai_%d.h5' % self.id)
-        self.AI.ask_ai.save(self.name + '_choose_ai_%d.h5' % self.id)
-        print 'saved ai'
+        self.ai.choose_ai.save(self.name + '_choose_ai_%d.h5' % self.id)
+        self.ai.ask_ai.save(self.name + '_ask_ai_%d.h5' % self.id)
+        print('saved ai')
     
     def flush_history(self):
-		"""use for memory purposes and when some data might be irrelevant"""
-		self.choose_history = []
-		self.choose_history_turn = []
-		self.ask_history = []
-		self.ask_history_turn = []
+        """use for memory purposes and when some data might be irrelevant"""
+        self.choose_history = []
+        self.choose_history_turn = []
+        self.ask_history = []
+        self.ask_history_turn = []
+
+    def update_win_history(self):
+        #make the history_win length equal to history length 
+        self.choose_history_win += [self.win] * (len(self.choose_history) - len(self.choose_history_win))
+        self.ask_history_win += [self.win] * (len(self.ask_history) - len(self.ask_history_win))
         
     def complete_serialize(self):
         '''
         encode the game state for this player, we dont know the oppositions hand
         '''
         state = []
-        opposition = self.game.players[1 - p.id]
-        
-        state = state + [self.game.turn]
-        #players will
-        state = state + [self.will[x] for x in season_short]
-        state = state + [self.score]
-        #opponents will
-        state = state + [opposition.will[x] for x in season_short]
-        state = state + [opposition.score]
-        #influence
-        state = state + [self.game.influence[x] for x in season_short]
-        #my hand
-        state = state + self.hand_counter
+        state = state + [self.game.turn_number]
+        if self.game.turn_number != 0 :
+            opposition = self.game.players[1 - self.id]
+            
+            #players will
+            state = state + [self.will[x] for x in season_short]
+            state = state + [self.score]
+            #opponents will
+            state = state + [opposition.will[x] for x in season_short]
+            state = state + [opposition.score]
+            #influence
+            state = state + [self.game.influence[x] for x in season_short]
+            #my hand
+            state = state + self.hand_counter            
+        else : 
+            state = state + [0] * len(season_short)
+            state = state + [0]
+            state = state + [0] * len(season_short)
+            state = state + [0]
+            state = state + [0] * len(season_short)
+            state = state + self.hand_counter
         return(state)
         
     def give_deck(self,deck):
@@ -138,6 +159,8 @@ class Player():
     def ask(self):
         #move the asked cards to the first two positions of the hand
         ask_cards = self.ai.ask()
+        print(type(ask_cards[0]))
+        print(ask_cards)
         log.debug(''.join([self.name ,' ask ', str(ask_cards[0]) , " ", str(ask_cards[1]) ]))
         #remove cards from hand
         self.hand.remove(ask_cards[0])
@@ -160,43 +183,19 @@ class Player():
         self.hand_counter = [0 for x in cards]
         for c in self.hand:
             self.hand_counter[cards_lut[str(c)]] += 1
- 
-    def create_ask_swap_mask(self) :
-        mask = np.zeroes(cards_ask)
-        # make all combinations of cards in hand and if they exist in cards_ask_lut then change the mask to 1
-        for i1,c1 in enumerate(hand):
-            for i2,c2 in enumerate(hand):
-                #dont pick same card in hand
-                if i1!=i2:
-                    #iterating twice will give both orders of pairs
-                    if cards_lut[str(c1)]>= cards_lut[str(c2)]:
-                        mask[cards_ask_lut[str(c1),str(c2)]] = 1                
-        return(mask)
-
-    def create_choose_swap_mask(choose_cards) :
-        #make whole mask zero except for two permutations of the choose cards
-        mask = np.zeroes(cards_choose)
-        mask[cards_choose_lut[(str(choose_cards[0]),str(choose_cards[1]))]] = 1                
-        mask[cards_choose_lut[(str(choose_cards[1]),str(choose_cards[0]))]] = 1                
-        return(mask)
-        
-    def load_ai(self):
-        """
-        make sure to call this before created a SharedAI object so that the new AIs are used for the non-base player
-        """
-        self.AI.choose_ai = load_model(self.name + '_dice_ai_%d.h5' % self.id)
-        self.AI.ask_ai = load_model(self.name + '_reroll_ai_%d.h5' % self.id)
-
-    def save_ai(self):
-        ai = self.AI 
-        ai.choose_ai.save(self.name + '_choose_ai_%d.h5' % self.id)
-        ai.ask_ai.save(self.name + '_ask_ai_%d.h5' % self.id)
-
-                               
+                                
 class Game():
-    def __init__(self, id, seed  = None):
+    def __init__(self, id, pre_existing_players = None, seed  = None):
         self.influence = {"h":0,"j":0,"k":0,"l":0}
         self.id = id
+        
+        self.turn_number = 0
+        
+        if not pre_existing_players:
+            self.players = [Player(0,self,"nn"),Player(1,self,"random")]
+            self.players[0].initialize_ai()
+        else:
+            self.players = pre_existing_players
         #use spcified seed, otherwise use id
         if seed != None: random.seed(seed)
         else : random.seed(id)
@@ -204,7 +203,7 @@ class Game():
         #store stats for game and turn
         self.game_stats = {}
         self.turn_stats = []
-        self.turn_number = 0 
+         
         #list of three empty lists, one for each power of card
         self.full_deck =  [[] for _ in range(3)] 
 
@@ -265,15 +264,10 @@ class Game():
     def winner(self):
         for p in self.players:
             opposition = p.game.players[1 - p.id]
-            max_other_score = opposition.score 
             #check that this player has maximum score
-            if p.score > max_other_score :
+            if p.score > opposition.score  :
+                p.win = 1
                 return(p)
-            #if they have tied for max points check seasons won
-            if p.score == max_other_score :
-                if p.seasons_won > opposition.seasons_won :
-                    return(p)
-            #if no one wins, its a draw
         return(None)
     
     def run_turn(self):
@@ -301,11 +295,12 @@ class Game():
     def run_game(self):
         while self.turn_number < 8:
             self.run_turn()
+        for player in self.players:
+            player.update_win_history()
         #find the winner store the stats
         winner = self.winner()
         self.game_stats['influence'] = self.influence
         for i,p in enumerate(self.players):
-            p.replenish()
             self.game_stats["p" + str(i) + " score"] = p.score
             self.game_stats["p" + str(i) + " will"] = p.will
         self.game_stats['draw'] = (winner is None)

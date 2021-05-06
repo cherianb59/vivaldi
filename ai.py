@@ -3,16 +3,25 @@ log = logging.getLogger(__name__)
 import random 
 from itertools import combinations
 import copy
+import numpy as np
 from numpy.random import choice as rchoice
+
+from constants import *
+
+import keras
+from keras.models import Sequential
+from keras.constraints import maxnorm
+from keras.optimizers import SGD
+from keras.layers import Dense, Dropout, Activation, Flatten
+
+from classes import Card 
 
 def choose_from_probs(probs, constraint_mask = None):
     #will almost always make optimal decision; 
-    if constraint_mask:
+    if constraint_mask is not None:
         probs = probs * constraint_mask
-    probs = probs * (probs==np.max(probs)) + (probs**2 * 0.01 + 0.001)/len(probs)
-    if constraint_mask:
-        probs = probs * constraint_mask
-
+    #mask max options
+    probs = probs * (probs==np.max(probs))
     probs = probs/np.sum(probs)
     choice = rchoice(range(len(probs)), size=1, p=probs)
     return choice[0]
@@ -53,12 +62,12 @@ class PlayerAI():
         """
         each possible two card combination is an input
         """
-        additional_inputs = 13*12/2
+        additional_inputs = 13*6
         self.ask_ai = self.generic_ai(additional_inputs)    
         
     def generic_ai(self, additional_inputs):
         ai = Sequential()
-        ai.add(Dense(512, input_shape = (self.input_dim + additional_inputs,) ) )
+        ai.add(Dense(512, input_shape = (int(self.input_dim + additional_inputs),) ) )
         ai.add(Dropout(0.1))
         ai.add(Activation('relu'))
         ai.add(Dense(256))
@@ -75,12 +84,32 @@ class PlayerAI():
                   metrics=['accuracy'])
         return ai 
 
+    def create_ask_mask(self) :
+        mask = np.zeros(len(cards_ask))
+        # make all combinations of cards in hand and if they exist in cards_ask_lut then change the mask to 1
+        for i1,c1 in enumerate(self.player.hand):
+            for i2,c2 in enumerate(self.player.hand):
+                #dont pick same card in hand
+                if i1!=i2:
+                    #iterating twice will give both orders of pairs
+                    if cards_lut[str(c1)]>= cards_lut[str(c2)]:
+                        mask[cards_ask_lut[str(c1),str(c2)]] = 1                
+        return(mask)
+
+    def create_choose_mask(self,choose_cards) :
+        #make whole mask zero except for two permutations of the choose cards
+        mask = np.zeros(len(cards_choose))
+        mask[cards_choose_lut[(str(choose_cards[0]),str(choose_cards[1]))]] = 1                
+        mask[cards_choose_lut[(str(choose_cards[1]),str(choose_cards[0]))]] = 1                
+        return(mask)
+
+    
     def decide_choose(self,choose_cards):
         """
         returns whether to place the cards as they are or to switch 
         """
         probs = self.AI.eval_choose()
-        choice = choose_from_probs(probs,self.player.create_choose_mask(choose_cards))
+        choice = choose_from_probs(probs,self.create_choose_mask(choose_cards))
         #convert choice to index then to cards
         choose_choice = cards_choose[choice]
         if [str(choose_cards[0]),str(choose_cards[1])] == choose_choice : return choose_cards
@@ -92,9 +121,9 @@ class PlayerAI():
         preds = self.choose_ai.predict(input)
         return preds[:,1]        
 
-    def record_choose(self):
+    def record_choose(self, choose_choice):
         extra_input = np.zeros( (1,12*12) )
-        extra_input[0,self.player.choose] = 1
+        extra_input[0,choose_choice] = 1
         input = self.merge_input(extra_input)
         self.player.choose_history.append(input)
             
@@ -103,20 +132,20 @@ class PlayerAI():
         returns whether to place the cards as they are or to switch 
         """
         probs = self.AI.eval_ask()
-        choice = choose_from_probs(probs,self.player.create_ask_mask(self.player.hand))
+        choice = choose_from_probs(probs,self.create_ask_mask())
         #convert choice to index then to cards
         ask_choice = ask_choose[choice]
         return(str_to_Card(ask_choice[0]),str_to_Card(ask_choice[1]))
     
     def eval_ask(self):
-        extra_input = np.identity(13*12/2)
+        extra_input = np.identity(13*6)
         input = self.merge_input(extra_input)
         preds = self.ask_ai.predict(input)
         return preds[:,1]        
 
-    def record_ask(self):
-        extra_input = np.zeros( (1,13*12/2) )
-        extra_input[0,self.player.choose] = 1
+    def record_ask(self, ask_choice):
+        extra_input = np.zeros( (1,13*6) )
+        extra_input[0,ask_choice] = 1
         input = self.merge_input(extra_input)
         self.player.ask_history.append(input)
     
@@ -134,19 +163,19 @@ class PlayerAI():
         any network without training data will be skipped
         choose | ask 
         """
-        if len(player.choose_history) != 0:
-            choose_x = np.asarray(player.choose_history)[:,0,:] 
-            choose_y = keras.utils.to_categorical(player.choose_history_win, 2)
+        if len(self.player.choose_history) != 0:
+            choose_x = np.asarray(self.player.choose_history)[:,0,:] 
+            choose_y = keras.utils.to_categorical(self.player.choose_history_win, 2)
             self.choose_ai.fit(choose_x, choose_y, epochs = 10, batch_size = 100, verbose=0)    
             
-        if len(player.ask_history) != 0:
-            ask_x = np.asarray(player.ask_history)[:,0,:] 
-            ask_y = keras.utils.to_categorical(player.ask_history_win, 2)
+        if len(self.player.ask_history) != 0:
+            ask_x = np.asarray(self.player.ask_history)[:,0,:] 
+            ask_y = keras.utils.to_categorical(self.player.ask_history_win, 2)
             self.ask_ai.fit(ask_x, ask_y, epochs = 10, batch_size = 100, verbose=0)    
         
     def ask(self):
         opposition = self.game.players[1 - self.player.id]
-    #move the asked cards to the start of the hand and return the hand
+    
         if self.ai_type in ("human") :
             log.debug(''.join([self.player.name,' human ask']))
             print("Game: ",self.game.influence,"Player: ",self.player.will,"Opposition: ",opposition.will)
@@ -161,20 +190,20 @@ class PlayerAI():
             return(self.player.hand[0:2])        
         
         if self.ai_type in ("nn") :
+            log.debug(''.join([self.player.name,' nn ask']))
             self.create_ask_mask()
             probs = self.eval_ask()
-            ask_choice = choose_from_probs(probs, constraint_mask = self.ask_mask)
-            self.record_ask()
-            return(ask_choice)
+            ask_choice = choose_from_probs(probs, constraint_mask = self.create_ask_mask())
+            self.record_ask(ask_choice)
+            #TODO convert index back to cards
+            return([Card(i) for i in cards_choose[ask_choice]])
         
         if self.ai_type in ("minimax","minimax2"):            
             log.debug(''.join([self.player.name,' minimax ask']))
             #try all the choices and find the best one, assume the other player will use minimax to choose the cards
             ask_max_points_difference = -999
             ask_option = None
-            
-            
-            
+                        
             #store vars that are going to change and need to be reverted
             opposition_ai = copy.copy(opposition.ai.ai_type)
             old_will = copy.copy(opposition.will)
@@ -209,9 +238,10 @@ class PlayerAI():
             opposition.ai_type = copy.copy(opposition_ai)
             
             return(ask_option)
-        
+    #TODO split this funcion    
     def choose(self, cards):
         opposition = self.game.players[1 - self.player.id]
+        
         if self.ai_type in ("human") :
             log.debug(''.join([self.player.name,' human choose']))
             print("Game: ",self.game.influence,"Player: ",self.player.will,"Opposition: ",opposition.will)
@@ -225,6 +255,14 @@ class PlayerAI():
             random.shuffle(cards)
             return(cards)        
         #try both pairs, choose whichever gives highest points 
+        
+        if self.ai_type in ("nn") :
+            log.debug(''.join([self.player.name,' NN choose']))
+            probs = self.eval_choose()
+            choose_choice = choose_from_probs(probs, constraint_mask = self.create_choose_mask(cards))
+            self.record_choose(choose_choice)
+            #TODO convert choice back to cards
+            return([Card(i) for i in cards_choose[choose_choice]])
         
         if self.ai_type in ("minimax","minimax2"):            
             log.debug(''.join([self.player.name,' minimax choose']))
