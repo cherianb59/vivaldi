@@ -20,8 +20,10 @@ def choose_from_probs(probs, constraint_mask = None):
     #will almost always make optimal decision; 
     if constraint_mask is not None:
         probs = probs * constraint_mask
-    #mask max options
-    probs = probs * (probs==np.max(probs))
+    #mask max options and add a little bit in case all options are zeroes
+    probs = probs * (probs==np.max(probs)) + (probs**2 * 0.01 + 0.001)/len(probs)
+    if constraint_mask is not None:
+        probs = probs * constraint_mask
     probs = probs/np.sum(probs)
     choice = rchoice(range(len(probs)), size=1, p=probs)
     return choice[0]
@@ -84,11 +86,11 @@ class PlayerAI():
                   metrics=['accuracy'])
         return ai 
 
-    def create_ask_mask(self) :
+    def create_ask_mask(self, hand) :
         mask = np.zeros(len(cards_ask))
         # make all combinations of cards in hand and if they exist in cards_ask_lut then change the mask to 1
-        for i1,c1 in enumerate(self.player.hand):
-            for i2,c2 in enumerate(self.player.hand):
+        for i1,c1 in enumerate(hand):
+            for i2,c2 in enumerate(hand):
                 #dont pick same card in hand
                 if i1!=i2:
                     #iterating twice will give both orders of pairs
@@ -102,18 +104,6 @@ class PlayerAI():
         mask[cards_choose_lut[(str(choose_cards[0]),str(choose_cards[1]))]] = 1                
         mask[cards_choose_lut[(str(choose_cards[1]),str(choose_cards[0]))]] = 1                
         return(mask)
-
-    
-    def decide_choose(self,choose_cards):
-        """
-        returns whether to place the cards as they are or to switch 
-        """
-        probs = self.AI.eval_choose()
-        choice = choose_from_probs(probs,self.create_choose_mask(choose_cards))
-        #convert choice to index then to cards
-        choose_choice = cards_choose[choice]
-        if [str(choose_cards[0]),str(choose_cards[1])] == choose_choice : return choose_cards
-        else: return(choose_cards[::-1])
                     
     def eval_choose(self):
         extra_input = np.identity(12*12)
@@ -126,17 +116,7 @@ class PlayerAI():
         extra_input[0,choose_choice] = 1
         input = self.merge_input(extra_input)
         self.player.choose_history.append(input)
-            
-    def decide_ask(self):
-        """
-        returns whether to place the cards as they are or to switch 
-        """
-        probs = self.AI.eval_ask()
-        choice = choose_from_probs(probs,self.create_ask_mask())
-        #convert choice to index then to cards
-        ask_choice = ask_choose[choice]
-        return(str_to_Card(ask_choice[0]),str_to_Card(ask_choice[1]))
-    
+                
     def eval_ask(self):
         extra_input = np.identity(13*6)
         input = self.merge_input(extra_input)
@@ -191,12 +171,11 @@ class PlayerAI():
         
         if self.ai_type in ("nn") :
             log.debug(''.join([self.player.name,' nn ask']))
-            self.create_ask_mask()
+            ask_mask = self.create_ask_mask(self.player.hand)
             probs = self.eval_ask()
-            ask_choice = choose_from_probs(probs, constraint_mask = self.create_ask_mask())
+            ask_choice = choose_from_probs(probs, constraint_mask = ask_mask)
             self.record_ask(ask_choice)
-            #TODO convert index back to cards
-            return([Card(i) for i in cards_choose[ask_choice]])
+            return([Card(i) for i in cards_ask[ask_choice]])
         
         if self.ai_type in ("minimax","minimax2"):            
             log.debug(''.join([self.player.name,' minimax ask']))
@@ -226,7 +205,6 @@ class PlayerAI():
                 self.game.scoring()
                 points_difference = self.player.score - opposition.score
                 
-                #print(ask_candidate, points_difference, opposition.will, self.game.influence)
                 log.debug(''.join(["player score:", str(self.player.score) ,"opposition score:",  str(opposition.score), " points diff: ",str(points_difference)] ))
                 #revert changes
                 opposition.will = copy.copy(old_will)

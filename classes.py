@@ -56,14 +56,18 @@ class Player():
         self.game = game 
         self.hand_counter = [0 for x in cards]
         self.ai = ai.PlayerAI(self,AI_type)
-        self.will = {"h":0,"j":0,"k":0,"l":0}
-        self.score = 0 
-        self.seasons_won = 0 
-        self.win = 0         
+        self.reset()
         self.ask_history = []
         self.ask_history_win = []
         self.choose_history = []
         self.choose_history_win = []
+
+    def reset(self):
+        self.will = {"h":0,"j":0,"k":0,"l":0}
+        self.score = 0 
+        self.seasons_won = 0 
+        self.win = 0         
+        self.hand = []
 
     def __lt__(self, other): 
         return(self.score < other.score)
@@ -84,6 +88,9 @@ class Player():
     def initialize_ai(self):
         self.ai.initialize_ai()
 
+    def train_ai(self):
+        self.ai.train()
+            
     def load_ai(self):
         self.ai.choose_ai = load_model(self.name + '_choose_ai_%d.h5' % self.id)
         self.ai.ask_ai = load_model(self.name + '_ask_ai_%d.h5' % self.id)
@@ -159,8 +166,6 @@ class Player():
     def ask(self):
         #move the asked cards to the first two positions of the hand
         ask_cards = self.ai.ask()
-        print(type(ask_cards[0]))
-        print(ask_cards)
         log.debug(''.join([self.name ,' ask ', str(ask_cards[0]) , " ", str(ask_cards[1]) ]))
         #remove cards from hand
         self.hand.remove(ask_cards[0])
@@ -196,7 +201,10 @@ class Game():
             self.players[0].initialize_ai()
         else:
             self.players = pre_existing_players
-        #use spcified seed, otherwise use id
+            
+        for p in self.players: p.reset()
+            
+        #use spcified seed, otherwise use id as rng seed
         if seed != None: random.seed(seed)
         else : random.seed(id)
             
@@ -267,6 +275,7 @@ class Game():
             #check that this player has maximum score
             if p.score > opposition.score  :
                 p.win = 1
+                opposition.win = 0 
                 return(p)
         return(None)
     
