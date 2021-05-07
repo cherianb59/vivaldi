@@ -20,7 +20,9 @@ def choose_from_probs(probs, constraint_mask = None):
     #will almost always make optimal decision; 
     if constraint_mask is not None:
         probs = probs * constraint_mask
-    #mask max options and add a little bit in case all options are zeroes
+    #mask max options 
+    #selects the greedy action with probability ? and a random action with probability ? to ensure good coverage of the state-action space.
+    #0.001 is a hardcoded hyper parameter and represents exploring options that arent the best option 
     probs = probs * (probs==np.max(probs)) + (probs**2 * 0.01 + 0.001)/len(probs)
     if constraint_mask is not None:
         probs = probs * constraint_mask
@@ -68,6 +70,7 @@ class PlayerAI():
         self.ask_ai = self.generic_ai(additional_inputs)    
         
     def generic_ai(self, additional_inputs):
+        #hyper parameters
         ai = Sequential()
         ai.add(Dense(512, input_shape = (int(self.input_dim + additional_inputs),) ) )
         ai.add(Dropout(0.1))
@@ -106,6 +109,8 @@ class PlayerAI():
         return(mask)
                     
     def eval_choose(self):
+        #try all two card combinations adding this to the game state and passing it to the NN will return the prob of winning.
+        #
         extra_input = np.identity(12*12)
         input = self.merge_input(extra_input)
         preds = self.choose_ai.predict(input)

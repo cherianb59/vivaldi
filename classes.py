@@ -104,9 +104,9 @@ class Player():
     def flush_history(self):
         """use for memory purposes and when some data might be irrelevant"""
         self.choose_history = []
-        self.choose_history_turn = []
+        self.choose_history_win = []
         self.ask_history = []
-        self.ask_history_turn = []
+        self.ask_history_win = []
 
     def update_win_history(self):
         #make the history_win length equal to history length 
@@ -304,10 +304,10 @@ class Game():
     def run_game(self):
         while self.turn_number < 8:
             self.run_turn()
-        for player in self.players:
-            player.update_win_history()
         #find the winner store the stats
         winner = self.winner()
+        for player in self.players:
+            player.update_win_history()        
         self.game_stats['influence'] = self.influence
         for i,p in enumerate(self.players):
             self.game_stats["p" + str(i) + " score"] = p.score
