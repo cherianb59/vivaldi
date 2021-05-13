@@ -197,7 +197,7 @@ class Game():
         self.turn_number = 0
         
         if not pre_existing_players:
-            self.players = [Player(0,self,"nn"),Player(1,self,"random")]
+            self.players = [Player(0,self,"random"),Player(1,self,"random")]
             self.players[0].initialize_ai()
         else:
             self.players = pre_existing_players
